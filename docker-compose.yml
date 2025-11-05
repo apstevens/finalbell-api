@@ -1,0 +1,75 @@
+version: '3.8'
+
+services:
+  # MySQL Database
+  db:
+    image: mysql:8.0
+    container_name: final-bell-db
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-changeme}
+      MYSQL_DATABASE: ${DB_NAME:-final_bell_db}
+      MYSQL_USER: ${DB_USER:-finalbell}
+      MYSQL_PASSWORD: ${DB_PASSWORD:-changeme}
+    ports:
+      - "${DB_PORT:-3306}:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./backups:/backups
+    networks:
+      - final-bell-network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Final Bell API
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: final-bell-api
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      NODE_ENV: ${NODE_ENV:-production}
+      PORT: ${PORT:-8080}
+      DATABASE_URL: mysql://${DB_USER:-finalbell}:${DB_PASSWORD:-changeme}@db:3306/${DB_NAME:-final_bell_db}
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-15m}
+      REFRESH_TOKEN_SECRET: ${REFRESH_TOKEN_SECRET}
+      REFRESH_TOKEN_EXPIRES_IN: ${REFRESH_TOKEN_EXPIRES_IN:-7d}
+      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-https://finalbell.co.uk,https://www.finalbell.co.uk}
+      CLIENT_URL: ${CLIENT_URL:-https://finalbell.co.uk}
+      STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY}
+      STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET}
+      PLAYWELL_FTP_HOST: ${PLAYWELL_FTP_HOST:-161.35.45.163}
+      PLAYWELL_FTP_USER: ${PLAYWELL_FTP_USER}
+      PLAYWELL_FTP_PASSWORD: ${PLAYWELL_FTP_PASSWORD}
+      ADMIN_API_KEY: ${ADMIN_API_KEY}
+      RATE_LIMIT_WINDOW_MS: ${RATE_LIMIT_WINDOW_MS:-900000}
+      RATE_LIMIT_MAX_REQUESTS: ${RATE_LIMIT_MAX_REQUESTS:-100}
+    ports:
+      - "${API_PORT:-8080}:8080"
+    volumes:
+      - csv_data:/app/data
+    networks:
+      - final-bell-network
+    command: >
+      sh -c "
+        npx prisma migrate deploy &&
+        node dist/server.js
+      "
+
+volumes:
+  mysql_data:
+    driver: local
+  csv_data:
+    driver: local
+
+networks:
+  final-bell-network:
+    driver: bridge

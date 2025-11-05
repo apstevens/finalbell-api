@@ -1,0 +1,434 @@
+// Final Bell API - Personal Trainer Portal Database Schema
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+// Enums
+enum UserRole {
+  ADMIN
+  TRAINER
+  CLIENT
+}
+
+enum WorkoutStatus {
+  SCHEDULED
+  COMPLETED
+  SKIPPED
+  IN_PROGRESS
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  CANCELLED
+  EXPIRED
+  TRIAL
+}
+
+// Core User Model
+model User {
+  id            String   @id @default(uuid())
+  email         String   @unique
+  passwordHash  String
+  firstName     String
+  lastName      String
+  role          UserRole
+  phoneNumber   String?
+  avatar        String?
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  // Trainer specific
+  trainerProfile   TrainerProfile?
+  clients          ClientTrainerRelation[] @relation("TrainerClients")
+
+  // Client specific
+  clientProfile    ClientProfile?
+  trainers         ClientTrainerRelation[] @relation("ClientTrainers")
+
+  // Common
+  sentMessages     Message[] @relation("SentMessages")
+  receivedMessages Message[] @relation("ReceivedMessages")
+  refreshTokens    RefreshToken[]
+
+  @@index([email])
+  @@index([role])
+}
+
+// Trainer Profile
+model TrainerProfile {
+  id              String   @id @default(uuid())
+  userId          String   @unique
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  bio             String?  @db.Text
+  specializations Json?
+  certifications  Json?
+  yearsExperience Int?
+  hourlyRate      Float?
+  timezone        String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  workoutTemplates  WorkoutTemplate[]
+  mealPlanTemplates MealPlanTemplate[]
+
+  @@index([userId])
+}
+
+// Client Profile
+model ClientProfile {
+  id              String    @id @default(uuid())
+  userId          String    @unique
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  dateOfBirth     DateTime?
+  gender          String?
+  height          Float?    // in cm
+  currentWeight   Float?    // in kg
+  goals           Json?
+  medicalNotes    String?   @db.Text
+  timezone        String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  workouts        Workout[]
+  mealPlans       MealPlan[]
+  progressEntries ProgressEntry[]
+  measurements    Measurement[]
+  subscriptions   Subscription[]
+
+  @@index([userId])
+}
+
+// Client-Trainer Relationship
+model ClientTrainerRelation {
+  id         String    @id @default(uuid())
+  clientId   String
+  client     User      @relation("ClientTrainers", fields: [clientId], references: [id], onDelete: Cascade)
+  trainerId  String
+  trainer    User      @relation("TrainerClients", fields: [trainerId], references: [id], onDelete: Cascade)
+  startDate  DateTime  @default(now())
+  endDate    DateTime?
+  isActive   Boolean   @default(true)
+  notes      String?   @db.Text
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  @@unique([clientId, trainerId])
+  @@index([clientId])
+  @@index([trainerId])
+  @@index([isActive])
+}
+
+// Exercise Library
+model Exercise {
+  id              String   @id @default(uuid())
+  name            String
+  description     String?  @db.Text
+  muscleGroups    Json? // chest, back, legs, shoulders, arms, core, etc.
+  equipmentNeeded Json? // barbell, dumbbells, cables, bodyweight, etc.
+  difficulty      String   // beginner, intermediate, advanced
+  videoUrl        String?
+  imageUrl        String?
+  instructions    Json? // step-by-step instructions
+  isPublic        Boolean  @default(true)
+  createdById     String?  // trainer who created custom exercise
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  workoutExercises        WorkoutExercise[]
+  workoutTemplateExercises WorkoutTemplateExercise[]
+
+  @@index([name])
+  @@index([difficulty])
+  @@index([isPublic])
+}
+
+// Workout Templates (Created by Trainers)
+model WorkoutTemplate {
+  id          String   @id @default(uuid())
+  name        String
+  description String?  @db.Text
+  trainerId   String
+  trainer     TrainerProfile @relation(fields: [trainerId], references: [id], onDelete: Cascade)
+  duration    Int?     // estimated duration in minutes
+  difficulty  String   // beginner, intermediate, advanced
+  tags        Json? // strength, cardio, flexibility, etc.
+  isPublic    Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  exercises   WorkoutTemplateExercise[]
+  workouts    Workout[]
+
+  @@index([trainerId])
+  @@index([difficulty])
+}
+
+// Exercises within a Workout Template
+model WorkoutTemplateExercise {
+  id         String   @id @default(uuid())
+  templateId String
+  template   WorkoutTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  exerciseId String
+  exercise   Exercise @relation(fields: [exerciseId], references: [id], onDelete: Restrict)
+  orderIndex Int      // order in the workout
+  sets       Int
+  reps       String   // "12" or "10-12" or "AMRAP" or "time-based"
+  duration   Int?     // for time-based exercises (seconds)
+  rest       Int?     // rest between sets (seconds)
+  weight     Float?   // recommended weight
+  notes      String?  @db.Text
+  createdAt  DateTime @default(now())
+
+  @@index([templateId, orderIndex])
+  @@index([exerciseId])
+}
+
+// Assigned Workouts (for Clients)
+model Workout {
+  id            String        @id @default(uuid())
+  clientId      String
+  client        ClientProfile @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  templateId    String?
+  template      WorkoutTemplate? @relation(fields: [templateId], references: [id], onDelete: SetNull)
+  name          String
+  description   String?       @db.Text
+  scheduledDate DateTime
+  completedDate DateTime?
+  status        WorkoutStatus @default(SCHEDULED)
+  duration      Int?          // actual duration in minutes
+  notes         String?       @db.Text
+  clientNotes   String?       @db.Text // notes added by client after completion
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  exercises  WorkoutExercise[]
+
+  @@index([clientId])
+  @@index([scheduledDate])
+  @@index([status])
+}
+
+// Exercises within an Assigned Workout
+model WorkoutExercise {
+  id         String   @id @default(uuid())
+  workoutId  String
+  workout    Workout  @relation(fields: [workoutId], references: [id], onDelete: Cascade)
+  exerciseId String
+  exercise   Exercise @relation(fields: [exerciseId], references: [id], onDelete: Restrict)
+  orderIndex Int
+  targetSets Int
+  targetReps String
+  targetWeight Float?
+  completed  Boolean  @default(false)
+  notes      String?  @db.Text
+  createdAt  DateTime @default(now())
+
+  actualSets WorkoutSet[]
+
+  @@index([workoutId, orderIndex])
+  @@index([exerciseId])
+}
+
+// Individual Sets within a Workout Exercise
+model WorkoutSet {
+  id                String   @id @default(uuid())
+  workoutExerciseId String
+  workoutExercise   WorkoutExercise @relation(fields: [workoutExerciseId], references: [id], onDelete: Cascade)
+  setNumber         Int
+  reps              Int?
+  weight            Float?
+  duration          Int?     // seconds (for time-based exercises)
+  rpe               Int?     // Rate of Perceived Exertion (1-10)
+  completed         Boolean  @default(false)
+  createdAt         DateTime @default(now())
+
+  @@index([workoutExerciseId])
+}
+
+// Meal Plan Templates (Created by Trainers)
+model MealPlanTemplate {
+  id            String   @id @default(uuid())
+  name          String
+  description   String?  @db.Text
+  trainerId     String
+  trainer       TrainerProfile @relation(fields: [trainerId], references: [id], onDelete: Cascade)
+  dailyCalories Int?
+  dailyProtein  Float?
+  dailyCarbs    Float?
+  dailyFat      Float?
+  tags          Json? // vegetarian, keto, bulking, cutting, etc.
+  isPublic      Boolean  @default(false)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  meals       MealTemplate[]
+  mealPlans   MealPlan[]
+
+  @@index([trainerId])
+}
+
+// Meals within a Meal Plan Template
+model MealTemplate {
+  id          String   @id @default(uuid())
+  templateId  String
+  template    MealPlanTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  name        String
+  mealType    String   // breakfast, lunch, dinner, snack
+  timeOfDay   String?  // "8:00 AM" or similar
+  orderIndex  Int
+  instructions String? @db.Text
+  createdAt   DateTime @default(now())
+
+  foods       FoodItem[]
+
+  @@index([templateId, orderIndex])
+}
+
+// Food Items within a Meal
+model FoodItem {
+  id          String   @id @default(uuid())
+  mealId      String
+  meal        MealTemplate @relation(fields: [mealId], references: [id], onDelete: Cascade)
+  name        String
+  quantity    Float
+  unit        String   // grams, oz, cups, etc.
+  calories    Float?
+  protein     Float?
+  carbs       Float?
+  fat         Float?
+  fiber       Float?
+  notes       String?
+  orderIndex  Int      @default(0)
+
+  @@index([mealId])
+}
+
+// Assigned Meal Plans (for Clients)
+model MealPlan {
+  id         String    @id @default(uuid())
+  clientId   String
+  client     ClientProfile @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  templateId String?
+  template   MealPlanTemplate? @relation(fields: [templateId], references: [id], onDelete: SetNull)
+  name       String
+  startDate  DateTime
+  endDate    DateTime?
+  isActive   Boolean   @default(true)
+  notes      String?   @db.Text
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  @@index([clientId])
+  @@index([isActive])
+}
+
+// Progress Tracking
+model ProgressEntry {
+  id        String    @id @default(uuid())
+  clientId  String
+  client    ClientProfile @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  date      DateTime  @default(now())
+  weight    Float?
+  bodyFat   Float?
+  notes     String?   @db.Text
+  mood      Int?      // 1-5 scale
+  energy    Int?      // 1-5 scale
+  createdAt DateTime  @default(now())
+
+  photos    ProgressPhoto[]
+
+  @@index([clientId, date])
+}
+
+// Progress Photos
+model ProgressPhoto {
+  id        String   @id @default(uuid())
+  entryId   String
+  entry     ProgressEntry @relation(fields: [entryId], references: [id], onDelete: Cascade)
+  url       String
+  type      String   // front, side, back, custom
+  createdAt DateTime @default(now())
+
+  @@index([entryId])
+}
+
+// Body Measurements
+model Measurement {
+  id        String    @id @default(uuid())
+  clientId  String
+  client    ClientProfile @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  date      DateTime  @default(now())
+  neck      Float?
+  chest     Float?
+  waist     Float?
+  hips      Float?
+  thighs    Float?
+  arms      Float?
+  calves    Float?
+  shoulders Float?
+  createdAt DateTime  @default(now())
+
+  @@index([clientId, date])
+}
+
+// Messaging System
+model Message {
+  id         String   @id @default(uuid())
+  senderId   String
+  sender     User     @relation("SentMessages", fields: [senderId], references: [id], onDelete: Cascade)
+  receiverId String
+  receiver   User     @relation("ReceivedMessages", fields: [receiverId], references: [id], onDelete: Cascade)
+  content    String   @db.Text
+  read       Boolean  @default(false)
+  readAt     DateTime?
+  createdAt  DateTime @default(now())
+
+  @@index([senderId, receiverId])
+  @@index([receiverId, read])
+  @@index([createdAt])
+}
+
+// Subscription Management
+model Subscription {
+  id        String    @id @default(uuid())
+  clientId  String
+  client    ClientProfile @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  plan      String    // basic, premium, elite, etc.
+  status    SubscriptionStatus
+  startDate DateTime
+  endDate   DateTime?
+  amount    Float
+  currency  String    @default("GBP")
+  billingCycle String  @default("monthly") // monthly, yearly
+  stripeSubscriptionId String? @unique
+  stripeCustomerId     String?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@index([clientId])
+  @@index([status])
+  @@index([stripeSubscriptionId])
+}
+
+// Refresh Tokens for JWT Auth
+model RefreshToken {
+  id        String   @id @default(uuid())
+  token     String   @unique
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  isRevoked Boolean  @default(false)
+
+  @@index([userId])
+  @@index([token])
+  @@index([expiresAt])
+}
