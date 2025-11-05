@@ -6,7 +6,7 @@ if (!env.STRIPE_SECRET_KEY) {
 }
 
 export const stripe = new Stripe(env.STRIPE_SECRET_KEY, {
-    apiVersion: '2024-12-18.acacia',
+    apiVersion: '2025-10-29',
 });
 
 export interface CheckoutItem {
