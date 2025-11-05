@@ -40,3 +40,38 @@ temp/
 # Test coverage
 coverage/
 .nyc_output/
+
+# Data files (CSV and backups)
+data/
+!data/.gitkeep
+
+# CSV sync logs
+logs/
+*.log
+
+# Railway
+.railway/
+
+# Docker
+.dockerignore
+
+# Claude artifacts
+.claude/
+
+# Temporary files
+tmp/
+*.tmp
+
+# Local development
+.env.development
+.env.production
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
+# Secrets
+*.pem
+*.key
+*.cert
