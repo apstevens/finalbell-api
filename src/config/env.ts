@@ -182,5 +182,13 @@ export const validateEnv = (): void => {
     throw new Error('Environment validation failed');
   }
 
+  if (env.JWT_SECRET.length < 32) {
+    throw new Error('JWT_SECRET must be at least 32 characters long');
+  }
+
+  if (env.REFRESH_TOKEN_SECRET.length < 32) {
+    throw new Error('REFRESH_TOKEN_SECRET must be at least 32 characters long');
+  } 
+
   console.log('✓ Environment variables validated');
 };
