@@ -23,7 +23,41 @@ app.use(requestLogger);
 app.use('/stripe/webhook', express.raw({ type: 'application/json' }));
 
 // Middleware
-app.use(helmet());
+app.use(helmet({
+    contentSecurityPolicy: { 
+        directives: { 
+            defaultSrc: ["'self'"], 
+            styleSrc: ["'self'", "'unsafe-inline'", "https://googleapis.com"],
+            fontSrc: ["'self'", "https://fonts.gstatic.com"],
+            imgSrc: ["'self'", 'data:', "https:"],
+            scriptSrc: ["'self'", "https://js.stripe.com"],
+            frameSrc: ["https://js.stripe.com", "https://hooks.stripe.com"],
+            connectSrc: ["'self'", "https://api.stripe.com"]
+            },
+        },
+        hsts: {
+            maxAge: 31536000, // 1 year
+            includeSubDomains: true,
+            preload: true
+        },
+        frameguard: {
+            action: 'deny', // Prevent clickjacking
+        },
+        noSniff: true, // Prevent MIME type sniffing
+        xssFilter: true, // Enable XSS filter
+        referrerPolicy: { policy: 'strict-origin-when-cross-origin' },
+}));
+
+// SECURITY: Permissions Policy restricts browser features
+// Set as custom middleware since older helmet versions don't support it directly
+app.use((_req, res, next) => {
+    res.setHeader(
+        'Permissions-Policy',
+        'camera=(), microphone=(), geolocation=(), payment=(self), usb=(), magnetometer=(), gyroscope=(), accelerometer=()'
+    );
+    next();
+});
+
 app.use(cors({
     origin: env.ALLOWED_ORIGINS,
     credentials: true,
@@ -33,7 +67,7 @@ app.use(cors({
     preflightContinue: false,
     optionsSuccessStatus: 204
 }));
-app.use(express.json());
+app.use(express.json({ limit: '10mb' })); // Size limit for JSON bodies
 app.use(cookieParser());
 
 // Apply rate limiting to all routes
