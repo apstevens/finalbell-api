@@ -7,6 +7,39 @@ export interface AppError extends Error {
 }
 
 /**
+ * SECURITY: Sanitize request body for logging
+ * Removes sensitive fields to prevent password/token leakage in logs
+ */
+const sanitizeBody = (body: any): any => {
+    if (!body || typeof body !== 'object') {
+        return body;
+    }
+
+    const sensitiveFields = [
+        'password',
+        'passwordHash',
+        'token',
+        'accessToken',
+        'refreshToken',
+        'secret',
+        'apiKey',
+        'creditCard',
+        'ssn',
+        'pin'
+    ];
+
+    const sanitized = { ...body };
+
+    for (const field of sensitiveFields) {
+        if (field in sanitized) {
+            sanitized[field] = '[REDACTED]';
+        }
+    }
+
+    return sanitized;
+};
+
+/**
  * Global Error Handler Middleware
  * Catches all errors and sends appropriate responses
  */
@@ -27,7 +60,8 @@ export const errorHandler = (
         statusCode,
         message: err.message,
         stack: env.NODE_ENV === 'development' ? err.stack : undefined,
-        body: env.NODE_ENV === 'development' ? req.body : undefined,
+        // SECURITY: Sanitize body to remove passwords and tokens
+        body: env.NODE_ENV === 'development' ? sanitizeBody(req.body) : undefined,
     });
 
     // Send error response
