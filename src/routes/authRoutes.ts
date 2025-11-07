@@ -20,7 +20,7 @@ router.post('/login', authLimiter, login);
  * POST /auth/refresh
  * Refresh access token using refresh token from HTTP-only cookie
  */
-router.post('/refresh', refresh);
+router.post('/refresh', authLimiter, refresh);
 
 /**
  * POST /auth/logout
