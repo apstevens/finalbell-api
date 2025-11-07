@@ -6,6 +6,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { verifyAccessToken } from '../utils/jwt';
 import { env } from '../config/env';
+import prisma from '../config/database';
 
 export interface AuthRequest extends Request {
   user?: {
@@ -41,8 +42,28 @@ export const requireAdmin = async (
     // Verify token
     const decoded = verifyAccessToken(token);
 
-    // Check if user is admin
-    if (decoded.role !== 'ADMIN' && decoded.role !== 'SUPER_ADMIN') {
+    // SECURITY ENHANCEMENT: Verify user exists in database and is active
+    // This prevents deleted/deactivated accounts from using valid but stale tokens
+    const user = await prisma.user.findUnique({
+      where: { id: decoded.userId },
+      select: {
+        id: true,
+        email: true,
+        role: true,
+        isActive: true
+      }
+    });
+
+    if (!user || !user.isActive) {
+      res.status(401).json({
+        success: false,
+        message: 'User not found or inactive',
+      });
+      return;
+    }
+
+    // Check if user is admin (use database role, not token role)
+    if (user.role !== 'ADMIN' && user.role !== 'SUPER_ADMIN') {
       res.status(403).json({
         success: false,
         message: 'Admin access required',
@@ -52,9 +73,9 @@ export const requireAdmin = async (
 
     // Attach user to request
     req.user = {
-      id: decoded.userId,
-      email: decoded.email,
-      role: decoded.role,
+      id: user.id,
+      email: user.email,
+      role: user.role,
     };
 
     next();
