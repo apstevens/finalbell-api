@@ -24,8 +24,18 @@ export const register = async (req: Request, res: Response): Promise<void> => {
     }
 
     // Validate password strength (minimum 8 characters)
-    if (password.length < 8) {
-      res.status(400).json({ error: 'Password must be at least 8 characters long' });
+    if (password.length < 12) {
+      res.status(400).json({ error: 'Password must be at least 12 characters long' });
+      return;
+    }
+
+    const hasUppercase = /[A-Z]/.test(password);
+    const hasLowercase = /[a-z]/.test(password);
+    const hasNumber = /[0-9]/.test(password);
+    const hasSpecialChar = /[!@#$%^&*(),.?":{}|<>]/.test(password);
+
+   if (!(hasUppercase && hasLowercase && hasNumber && hasSpecialChar)) {
+      res.status(400).json({ error: 'Password must include uppercase, lowercase, number, and special character' });
       return;
     }
 
@@ -76,9 +86,10 @@ export const register = async (req: Request, res: Response): Promise<void> => {
     // Set refresh token in HTTP-only cookie
     res.cookie('refreshToken', refreshToken, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict',
+      secure: true,
+      sameSite: 'lax',
       maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+      domain: process.env.NODE_ENV === 'production' ? '.finalbell.co.uk' : undefined
     });
 
     // Return success response with access token
@@ -147,9 +158,10 @@ export const login = async (req: Request, res: Response): Promise<void> => {
     // Set refresh token in HTTP-only cookie
     res.cookie('refreshToken', refreshToken, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict',
+      secure: true,
+      sameSite: 'lax',
       maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+      domain: process.env.NODE_ENV === 'production' ? '.finalbell.co.uk' : undefined
     });
 
     // Return success response with access token
@@ -201,6 +213,21 @@ export const refresh = async (req: Request, res: Response): Promise<void> => {
       email: user.email,
     });
 
+    // Generate new refresh token
+    const newRefreshToken = generateRefreshToken({
+      userId: user.id,
+      email: user.email,
+    });
+
+    // Set new refresh token in HTTP-only cookie
+    res.cookie('refreshToken', newRefreshToken, {
+      httpOnly: true,
+      secure: true,
+      sameSite: 'lax',
+      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+      domain: process.env.NODE_ENV === 'production' ? '.finalbell.co.uk' : undefined
+    });
+
     // Return new access token and user info
     res.status(200).json({
       accessToken,
@@ -215,6 +242,7 @@ export const refresh = async (req: Request, res: Response): Promise<void> => {
         avatar: user.avatar,
       },
     });
+
   } catch (error) {
     console.error('Refresh token error:', error);
     res.status(401).json({ error: 'Invalid or expired refresh token' });
