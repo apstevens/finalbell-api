@@ -9,7 +9,8 @@
     "test:coverage": "jest --coverage",
     "dev": "ts-node src/server.ts",
     "build": "npx prisma generate && tsc",
-    "start": "node dist/server.js",
+    "start": "npx prisma migrate deploy && node dist/server.js",
+    "start:prod": "npx prisma migrate deploy && node dist/server.js",
     "lint": "echo \"Linting not configured yet\""
   },
   "keywords": [],
