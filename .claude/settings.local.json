@@ -20,7 +20,10 @@
       "Bash(git remote add:*)",
       "Bash(git push:*)",
       "Bash(git rm:*)",
-      "Bash(git mv:*)"
+      "Bash(git mv:*)",
+      "Bash(npx tsc:*)",
+      "Bash(npm outdated:*)",
+      "Bash(npm audit:*)"
     ],
     "deny": [],
     "ask": []

@@ -10,9 +10,13 @@ import clientTrainerRoutes from './routes/clientTrainerRoutes';
 import adminRoutes from './routes/adminRoutes';
 import stripeRoutes from './routes/stripeRoutes';
 import { schedulerService } from './services/schedulerService';
+import { ipBlacklistService } from './services/ipBlacklistService';
 import { apiLimiter } from './middleware/rateLimiter';
+import { ipBlacklistMiddleware } from './middleware/ipBlacklist';
 import { errorHandler, notFoundHandler } from './middleware/errorHandler';
 import { requestLogger } from './utils/logger';
+import mongoSanitize from 'express-mongo-sanitize';
+import hpp from 'hpp';
 
 const app = express();
 
@@ -70,8 +74,23 @@ app.use(cors({
 app.use(express.json({ limit: '10mb' })); // Size limit for JSON bodies
 app.use(cookieParser());
 
+app.use(mongoSanitize({
+    replaceWith: '_',
+    onSanitize: ({ req, key }) => {
+        console.warn(`Sanitized ${key} in ${req.path} from ${req.ip}`);
+    },
+}));
+
+// Prevent HTTP Parameter Pollution
+app.use(hpp({
+    whitelist: ['category', 'price', 'size'], // Add any params that should allow duplicates, e.g., ['category', 'tags']
+}));
+
 // Apply rate limiting to all routes
 app.use(apiLimiter);
+
+// Apply IP blacklist middleware (blocks requests from malicious IPs)
+app.use(ipBlacklistMiddleware);
 
 // Health check endpoint
 app.get('/health', async (_req, res) => {
@@ -125,8 +144,30 @@ const startServer = async () => {
         // Connect to database
         await connectDatabase();
 
+        // Load IP blacklist on startup
+        console.log('Loading IP blacklist...');
+        try {
+            await ipBlacklistService.loadFromFile();
+        } catch (error) {
+            console.warn('Failed to load blacklist from file, fetching from sources...');
+            await ipBlacklistService.updateBlacklist();
+        }
+
         // Start scheduler for CSV sync
         schedulerService.start();
+
+        // Schedule automatic blacklist updates (configurable interval)
+        if (env.IP_BLACKLIST_ENABLED) {
+            const updateIntervalMs = env.IP_BLACKLIST_UPDATE_INTERVAL_HOURS * 60 * 60 * 1000;
+            setInterval(async () => {
+                console.log('Updating IP blacklist...');
+                try {
+                    await ipBlacklistService.updateBlacklist();
+                } catch (error) {
+                    console.error('Failed to update blacklist:', error);
+                }
+            }, updateIntervalMs);
+        }
 
         // Start listening
         const PORT = env.PORT;
@@ -134,6 +175,8 @@ const startServer = async () => {
             console.log(`✓ Server running on port ${PORT}`);
             console.log(`✓ Environment: ${env.NODE_ENV}`);
             console.log(`✓ Health check: http://localhost:${PORT}/health`);
+            const stats = ipBlacklistService.getStats();
+            console.log(`✓ IP Blacklist loaded: ${stats.count} IPs`);
         });
     } catch (error) {
         console.error('Failed to start server:', error);

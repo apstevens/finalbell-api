@@ -30,14 +30,18 @@
     "cors": "^2.8.5",
     "dotenv": "^17.2.3",
     "express": "^5.1.0",
+    "express-mongo-sanitize": "^2.2.0",
     "express-rate-limit": "^8.2.1",
     "helmet": "^8.1.0",
+    "hpp": "^0.2.3",
     "jsonwebtoken": "^9.0.2",
     "prisma": "^6.18.0",
     "stripe": "^19.2.1",
-    "typescript": "^5.9.3"
+    "typescript": "^5.9.3",
+    "xss-clean": "^0.1.4"
   },
   "devDependencies": {
+    "@types/hpp": "^0.2.7",
     "@types/jest": "^30.0.0",
     "@types/supertest": "^6.0.3",
     "jest": "^30.2.0",

@@ -69,6 +69,10 @@ interface EnvConfig {
 
   // Admin
   ADMIN_API_KEY?: string;
+
+  // IP Blacklist
+  IP_BLACKLIST_ENABLED: boolean;
+  IP_BLACKLIST_UPDATE_INTERVAL_HOURS: number;
 }
 
 const getEnvVar = (key: string, defaultValue?: string): string => {
@@ -164,6 +168,10 @@ export const env: EnvConfig = {
 
   // Admin
   ADMIN_API_KEY: getOptionalEnvVar('ADMIN_API_KEY'),
+
+  // IP Blacklist
+  IP_BLACKLIST_ENABLED: getBooleanEnvVar('IP_BLACKLIST_ENABLED', true),
+  IP_BLACKLIST_UPDATE_INTERVAL_HOURS: getNumberEnvVar('IP_BLACKLIST_UPDATE_INTERVAL_HOURS', 24),
 };
 
 // Validate critical environment variables on startup
