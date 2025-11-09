@@ -36,14 +36,13 @@ RUN addgroup -g 1001 -S nodejs && adduser -S nodejs -u 1001
 # Set working directory
 WORKDIR /app
 
+# Copy built application from builder
+COPY --from=builder --chown=nodejs:nodejs /app/dist ./dist
+COPY --from=builder --chown=nodejs:nodejs /app/prisma ./prisma
+
 # Copy package files and install only production dependencies
 COPY package*.json ./
 RUN npm ci --only=production && npm cache clean --force
-
-# Copy built application from builder
-COPY --from=builder --chown=nodejs:nodejs /app/dist ./dist
-COPY --from=builder --chown=nodejs:nodejs /app/node_modules ./node_modules
-COPY --from=builder --chown=nodejs:nodejs /app/prisma ./prisma
 
 # Create data directory for CSV files
 RUN mkdir -p /app/data/backups && chown -R nodejs:nodejs /app/data
