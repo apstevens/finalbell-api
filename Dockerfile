@@ -4,19 +4,18 @@ FROM node:20-alpine AS builder
 # Set working directory
 WORKDIR /app
 
-# Copy package files
-COPY package*.json ./
-COPY tsconfig.json ./
+# Copy package files and tsconfig
+COPY package*.json tsconfig.json ./
 
 # Install ALL dependencies (including devDependencies for build)
 RUN npm ci && npm cache clean --force
 
-# Copy source code
+# Copy source code and prisma
 COPY src ./src
 COPY prisma ./prisma
 
 # Build TypeScript (includes prisma generate)
-RUN npm run build
+RUN ls -la && cat tsconfig.json && npm run build
 
 # Production stage
 FROM node:20-alpine AS production
