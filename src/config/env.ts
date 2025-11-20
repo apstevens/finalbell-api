@@ -1,15 +1,25 @@
 import { config } from 'dotenv';
 import path from 'path';
+import fs from 'fs';
 
 // Load environment variables based on NODE_ENV
-// Priority: NODE_ENV → .env.{NODE_ENV} → .env
+// In production (Railway), environment variables are set directly by the platform
+// In development, load from .env file
 const nodeEnv = process.env.NODE_ENV || 'development';
-const envFile = nodeEnv === 'production' ? '.env.production' : '.env';
-const envPath = path.resolve(process.cwd(), envFile);
 
-config({ path: envPath });
+if (nodeEnv === 'production') {
+    console.log('Production environment: Using platform environment variables');
+} else {
+    const envFile = '.env';
+    const envPath = path.resolve(process.cwd(), envFile);
 
-console.log(`Loading environment from: ${envFile}`);
+    if (fs.existsSync(envPath)) {
+        config({ path: envPath });
+        console.log(`Loading environment from: ${envFile}`);
+    } else {
+        console.log('No .env file found, using system environment variables');
+    }
+}
 
 /**
  * Environment Variables Configuration
