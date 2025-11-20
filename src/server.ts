@@ -9,6 +9,8 @@ import userRoutes from './routes/userRoutes';
 import clientTrainerRoutes from './routes/clientTrainerRoutes';
 import adminRoutes from './routes/adminRoutes';
 import stripeRoutes from './routes/stripeRoutes';
+import productRoutes from './routes/productRoutes';
+import orderRoutes from './routes/orderRoutes';
 import { schedulerService } from './services/schedulerService';
 import { ipBlacklistService } from './services/ipBlacklistService';
 import { apiLimiter } from './middleware/rateLimiter';
@@ -74,12 +76,14 @@ app.use(cors({
 app.use(express.json({ limit: '10mb' })); // Size limit for JSON bodies
 app.use(cookieParser());
 
-app.use(mongoSanitize({
-    replaceWith: '_',
-    onSanitize: ({ req, key }) => {
-        console.warn(`Sanitized ${key} in ${req.path} from ${req.ip}`);
-    },
-}));
+// NOTE: Temporarily disabled due to Express 5.x compatibility issue
+// TODO: Replace with Express 5.x compatible sanitization middleware
+// app.use(mongoSanitize({
+//     replaceWith: '_',
+//     onSanitize: ({ req, key }) => {
+//         console.warn(`Sanitized ${key} in ${req.path} from ${req.ip}`);
+//     },
+// }));
 
 // Prevent HTTP Parameter Pollution
 app.use(hpp({
@@ -117,6 +121,8 @@ app.use('/users', userRoutes);
 app.use('/client-trainer', clientTrainerRoutes);
 app.use('/admin', adminRoutes);
 app.use('/stripe', stripeRoutes);
+app.use('/products', productRoutes);
+app.use('/orders', orderRoutes);
 
 // 404 handler - must be after all routes
 app.use(notFoundHandler);

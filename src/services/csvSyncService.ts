@@ -1,11 +1,10 @@
 /**
  * CSV Sync Service
- * Handles downloading and updating the Playwell CSV from FTP server
+ * Handles downloading and updating the product CSV from muaythai-boxing.com
  */
 
 import { promises as fs } from 'fs';
 import path from 'path';
-import * as ftp from 'basic-ftp';
 import { env } from '../config/env';
 
 export interface SyncResult {
@@ -21,49 +20,43 @@ export interface SyncResult {
 }
 
 export class CSVSyncService {
-  private ftpHost: string;
-  private ftpUser: string;
-  private ftpPassword: string;
-  private remoteFilePath: string;
+  private csvUrl: string;
   private localFilePath: string;
   private backupDir: string;
 
   constructor() {
-    this.ftpHost = env.PLAYWELL_FTP_HOST || 'ftp://161.35.45.163';
-    this.ftpUser = env.PLAYWELL_FTP_USER || '';
-    this.ftpPassword = env.PLAYWELL_FTP_PASSWORD || '';
-    this.remoteFilePath = '/playwell-stock-shopify-b.csv';
-    this.localFilePath = path.join(process.cwd(), 'data', 'playwell-stock-shopify-b.csv');
+    this.csvUrl = env.MTB_CSV_URL || 'https://app.matrixify.app/files/hx1kg2-jn/a9c39b060fb5c913dcb623116952f087/mtb-product-export.csv';
+    this.localFilePath = path.join(process.cwd(), 'data', 'mtb-product-export.csv');
     this.backupDir = path.join(process.cwd(), 'data', 'backups');
   }
 
   /**
-   * Download CSV from FTP server
+   * Download CSV from muaythai-boxing.com
    */
-  async downloadFromFTP(): Promise<{ success: boolean; error?: string; fileSize?: number }> {
-    const client = new ftp.Client();
-    client.ftp.verbose = env.NODE_ENV === 'development';
-
+  async downloadFromURL(): Promise<{ success: boolean; error?: string; fileSize?: number }> {
     try {
-      console.log(`[CSV Sync] Connecting to FTP server: ${this.ftpHost}`);
-
-      // Parse FTP host to remove protocol
-      const host = this.ftpHost.replace(/^ftp:\/\//, '');
-
-      await client.access({
-        host,
-        user: this.ftpUser,
-        password: this.ftpPassword,
-        secure: false,
-      });
-
-      console.log('[CSV Sync] Connected to FTP server');
+      console.log(`[CSV Sync] Downloading CSV from: ${this.csvUrl}`);
 
       // Create data directory if it doesn't exist
       await fs.mkdir(path.dirname(this.localFilePath), { recursive: true });
 
-      // Download file
-      await client.downloadTo(this.localFilePath, this.remoteFilePath);
+      // Download file using fetch
+      const response = await fetch(this.csvUrl, {
+        method: 'GET',
+        headers: {
+          'User-Agent': 'FinalBellAPI/1.0',
+        },
+        redirect: 'follow',
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const arrayBuffer = await response.arrayBuffer();
+      const buffer = Buffer.from(arrayBuffer);
+
+      await fs.writeFile(this.localFilePath, buffer);
 
       const stats = await fs.stat(this.localFilePath);
       console.log(`[CSV Sync] Downloaded CSV: ${stats.size} bytes`);
@@ -73,13 +66,11 @@ export class CSVSyncService {
         fileSize: stats.size,
       };
     } catch (error) {
-      console.error('[CSV Sync] FTP download failed:', error);
+      console.error('[CSV Sync] CSV download failed:', error);
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Unknown error',
       };
-    } finally {
-      client.close();
     }
   }
 
@@ -103,7 +94,7 @@ export class CSVSyncService {
 
       // Create backup with timestamp
       const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-      const backupPath = path.join(this.backupDir, `playwell-stock-${timestamp}.csv`);
+      const backupPath = path.join(this.backupDir, `mtb-product-${timestamp}.csv`);
 
       await fs.copyFile(this.localFilePath, backupPath);
       console.log(`[CSV Sync] Backup created: ${backupPath}`);
@@ -126,7 +117,7 @@ export class CSVSyncService {
       const maxAge = daysToKeep * 24 * 60 * 60 * 1000;
 
       for (const file of files) {
-        if (!file.startsWith('playwell-stock-')) continue;
+        if (!file.startsWith('mtb-product-')) continue;
 
         const filePath = path.join(this.backupDir, file);
         const stats = await fs.stat(filePath);
@@ -143,7 +134,7 @@ export class CSVSyncService {
   }
 
   /**
-   * Sync CSV from FTP server
+   * Sync CSV from muaythai-boxing.com
    */
   async sync(): Promise<SyncResult> {
     const startTime = Date.now();
@@ -153,8 +144,8 @@ export class CSVSyncService {
       // Create backup of current file
       await this.createBackup();
 
-      // Download new file from FTP
-      const downloadResult = await this.downloadFromFTP();
+      // Download new file from URL
+      const downloadResult = await this.downloadFromURL();
 
       if (!downloadResult.success) {
         return {

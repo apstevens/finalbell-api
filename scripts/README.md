@@ -4,7 +4,7 @@ This directory contains scripts for automating various tasks in the Final Bell A
 
 ## CSV Sync to Frontend
 
-Automates the complete pipeline for syncing product data from Playwell FTP to the frontend marketing site.
+Automates the complete pipeline for syncing product data from muaythai-boxing.com FTP to the frontend marketing site.
 
 ### Linux/Mac (Bash)
 
@@ -60,7 +60,7 @@ crontab -e
 
 ## What the Script Does
 
-1. **Triggers backend CSV sync** - Calls the API endpoint to download latest CSV from Playwell FTP
+1. **Triggers backend CSV sync** - Calls the API endpoint to download latest CSV from muaythai-boxing.com FTP
 2. **Waits for completion** - Allows time for the sync to finish
 3. **Copies CSV to frontend** - Copies the CSV file to frontend assets directory
 4. **Runs frontend import** - Executes `importProducts.mjs` to parse CSV and generate product data
@@ -83,7 +83,7 @@ Logs are stored in `logs/csv-sync.log` and include:
 - Check backend logs for FTP connection issues
 
 ### Script fails at Step 3
-- Verify CSV file exists in `data/playwell-stock-shopify-b.csv`
+- Verify CSV file exists in `data/mtb-product-export.csv`
 - Check that frontend directory path is correct
 - Ensure write permissions on frontend assets directory
 

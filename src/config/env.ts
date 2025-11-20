@@ -1,7 +1,15 @@
 import { config } from 'dotenv';
+import path from 'path';
 
-// Load environment variables from .env file
-config();
+// Load environment variables based on NODE_ENV
+// Priority: NODE_ENV → .env.{NODE_ENV} → .env
+const nodeEnv = process.env.NODE_ENV || 'development';
+const envFile = nodeEnv === 'production' ? '.env.production' : '.env';
+const envPath = path.resolve(process.cwd(), envFile);
+
+config({ path: envPath });
+
+console.log(`Loading environment from: ${envFile}`);
 
 /**
  * Environment Variables Configuration
@@ -49,6 +57,7 @@ interface EnvConfig {
   SMTP_USER?: string;
   SMTP_PASSWORD?: string;
   EMAIL_FROM?: string;
+  ADMIN_EMAIL?: string;
 
   // Stripe
   STRIPE_SECRET_KEY?: string;
@@ -62,10 +71,8 @@ interface EnvConfig {
   // Client
   CLIENT_URL: string;
 
-  // Playwell FTP
-  PLAYWELL_FTP_HOST?: string;
-  PLAYWELL_FTP_USER?: string;
-  PLAYWELL_FTP_PASSWORD?: string;
+  // Muaythai-Boxing.com CSV
+  MTB_CSV_URL?: string;
 
   // Admin
   ADMIN_API_KEY?: string;
@@ -148,6 +155,7 @@ export const env: EnvConfig = {
   SMTP_USER: getOptionalEnvVar('SMTP_USER'),
   SMTP_PASSWORD: getOptionalEnvVar('SMTP_PASSWORD'),
   EMAIL_FROM: getOptionalEnvVar('EMAIL_FROM', 'noreply@finalbell.co.uk'),
+  ADMIN_EMAIL: getOptionalEnvVar('ADMIN_EMAIL'),
 
   // Stripe
   STRIPE_SECRET_KEY: getOptionalEnvVar('STRIPE_SECRET_KEY'),
@@ -161,10 +169,8 @@ export const env: EnvConfig = {
   // Client
   CLIENT_URL: getEnvVar('CLIENT_URL', 'https://finalbell.co.uk'),
 
-  // Playwell FTP
-  PLAYWELL_FTP_HOST: getOptionalEnvVar('PLAYWELL_FTP_HOST', '161.35.45.163'),
-  PLAYWELL_FTP_USER: getOptionalEnvVar('PLAYWELL_FTP_USER'),
-  PLAYWELL_FTP_PASSWORD: getOptionalEnvVar('PLAYWELL_FTP_PASSWORD'),
+  // Muaythai-Boxing.com CSV
+  MTB_CSV_URL: getOptionalEnvVar('MTB_CSV_URL', 'https://app.matrixify.app/files/hx1kg2-jn/a9c39b060fb5c913dcb623116952f087/mtb-product-export.csv'),
 
   // Admin
   ADMIN_API_KEY: getOptionalEnvVar('ADMIN_API_KEY'),

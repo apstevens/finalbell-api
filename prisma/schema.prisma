@@ -6,7 +6,7 @@ generator client {
 }
 
 datasource db {
-  provider = "mysql"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
@@ -30,6 +30,21 @@ enum SubscriptionStatus {
   CANCELLED
   EXPIRED
   TRIAL
+}
+
+enum OrderStatus {
+  PENDING
+  PROCESSING
+  SHIPPED
+  DELIVERED
+  CANCELLED
+  REFUNDED
+}
+
+enum OrderSource {
+  STRIPE
+  MANUAL
+  ADMIN
 }
 
 // Core User Model
@@ -432,4 +447,110 @@ model RefreshToken {
   @@index([userId])
   @@index([token])
   @@index([expiresAt])
+}
+
+// E-commerce Orders
+model Order {
+  id                String      @id @default(uuid())
+  orderNumber       String      @unique // Format: FB-2025-0001
+
+  // Customer Information
+  customerEmail     String
+  customerFirstName String
+  customerLastName  String
+  customerPhone     String?
+
+  // Shipping Address
+  shippingStreet    String
+  shippingCity      String
+  shippingPostcode  String
+  shippingCountry   String      @default("GB")
+
+  // Billing Address (optional if same as shipping)
+  billingStreet     String?
+  billingCity       String?
+  billingPostcode   String?
+  billingCountry    String?
+
+  // Order Details
+  status            OrderStatus @default(PENDING)
+  source            OrderSource @default(STRIPE)
+  subtotal          Float       // in GBP
+  shippingCost      Float       @default(0)
+  tax               Float       @default(0)
+  total             Float       // in GBP
+  currency          String      @default("GBP")
+
+  // Payment Information
+  stripeSessionId   String?     @unique
+  stripePaymentIntentId String? @unique
+  paidAt            DateTime?
+
+  // Fulfillment Information
+  supplierOrderId   String?     // Order ID from muaythai-boxing.com
+  trackingNumber    String?
+  trackingUrl       String?
+  carrier           String?     // Royal Mail, DPD, etc.
+  shippedAt         DateTime?
+  deliveredAt       DateTime?
+
+  // Admin Notes
+  internalNotes     String?     @db.Text
+  cancellationReason String?    @db.Text
+
+  // Timestamps
+  createdAt         DateTime    @default(now())
+  updatedAt         DateTime    @updatedAt
+
+  // Relations
+  items             OrderItem[]
+  statusHistory     OrderStatusHistory[]
+
+  @@index([orderNumber])
+  @@index([customerEmail])
+  @@index([status])
+  @@index([createdAt])
+  @@index([stripeSessionId])
+}
+
+// Order Line Items
+model OrderItem {
+  id            String   @id @default(uuid())
+  orderId       String
+  order         Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  // Product Information (snapshot at time of order)
+  productId     String   // SKU from CSV
+  productName   String
+  variantName   String?
+  sku           String
+
+  // Pricing
+  quantity      Int
+  unitPrice     Float    // in GBP
+  totalPrice    Float    // quantity * unitPrice
+
+  // Product Details (snapshot)
+  weight        Float?   // in grams
+  imageUrl      String?
+
+  createdAt     DateTime @default(now())
+
+  @@index([orderId])
+  @@index([productId])
+}
+
+// Order Status History for Tracking Changes
+model OrderStatusHistory {
+  id        String      @id @default(uuid())
+  orderId   String
+  order     Order       @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  status    OrderStatus
+  notes     String?     @db.Text
+  createdBy String?     // Admin user ID who made the change
+
+  createdAt DateTime    @default(now())
+
+  @@index([orderId, createdAt])
 }

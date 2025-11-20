@@ -10,7 +10,7 @@ Backend API for the Final Bell Personal Trainer Platform and E-commerce Marketin
 - **Workout & Meal Plans** - Templates and assignments for personal training
 - **Progress Tracking** - Weight, measurements, and photo tracking
 - **Stripe Integration** - Payment processing for e-commerce products
-- **CSV Automation** - Automated product sync from Playwell FTP server
+- **CSV Automation** - Automated product sync from muaythai-boxing.com FTP server
 - **Messaging System** - Client-trainer communication
 - **Subscription Management** - Stripe-based subscriptions
 

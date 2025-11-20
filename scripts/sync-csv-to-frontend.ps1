@@ -15,7 +15,7 @@ param(
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $ApiDir = Split-Path -Parent $ScriptDir
 $FrontendDir = Join-Path (Split-Path -Parent $ApiDir) "final-bell-marketing"
-$CsvFile = "playwell-stock-shopify-b.csv"
+$CsvFile = "mtb-product-export.csv"
 $LogDir = Join-Path $ApiDir "logs"
 $LogFile = Join-Path $LogDir "csv-sync.log"
 
@@ -42,7 +42,7 @@ function Write-Log {
 }
 
 ###############################################################################
-# Step 1: Trigger backend CSV sync from FTP
+# Step 1: Trigger backend CSV sync from muaythai-boxing.com
 ###############################################################################
 Write-Log "Step 1: Triggering backend CSV sync..." "INFO"
 
@@ -183,7 +183,7 @@ Write-Log "CSV sync to frontend completed successfully!" "SUCCESS"
 Write-Log "=========================================" "INFO"
 Write-Log "" "INFO"
 Write-Log "Summary:" "INFO"
-Write-Log "  - CSV synced from FTP" "INFO"
+Write-Log "  - CSV synced from muaythai-boxing.com" "INFO"
 Write-Log "  - CSV file size: $FileSizeMB MB" "INFO"
 Write-Log "  - Log file: $LogFile" "INFO"
 Write-Log "" "INFO"

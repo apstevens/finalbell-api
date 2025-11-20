@@ -1,10 +1,10 @@
 # CSV Sync Setup Guide
 
-This guide explains how to set up and use the automatic CSV synchronization system for Playwell products.
+This guide explains how to set up and use the automatic CSV synchronization system for muaythai-boxing.com products.
 
 ## Overview
 
-The CSV sync system automatically downloads the latest product data from Playwell's FTP server daily. It includes:
+The CSV sync system automatically downloads the latest product data from muaythai-boxing.com daily. It includes:
 
 - **Automatic daily sync** via scheduler
 - **Manual sync endpoint** for immediate updates
@@ -14,21 +14,13 @@ The CSV sync system automatically downloads the latest product data from Playwel
 
 ## Installation
 
-### 1. Install FTP Client Dependency
-
-```bash
-npm install basic-ftp
-```
-
-### 2. Configure Environment Variables
+### 1. Configure Environment Variables
 
 Add the following to your `.env` file:
 
 ```env
-# Playwell FTP Configuration
-PLAYWELL_FTP_HOST=161.35.45.163
-PLAYWELL_FTP_USER=your-ftp-username
-PLAYWELL_FTP_PASSWORD=your-ftp-password
+# Muaythai-Boxing.com CSV Configuration
+MTB_CSV_URL=https://app.matrixify.app/files/hx1kg2-jn/a9c39b060fb5c913dcb623116952f087/mtb-product-export.csv
 
 # Admin API Configuration
 ADMIN_API_KEY=your-secure-api-key-here
@@ -39,7 +31,7 @@ ADMIN_API_KEY=your-secure-api-key-here
 openssl rand -base64 32
 ```
 
-### 3. Create Data Directories
+### 2. Create Data Directories
 
 The system will automatically create these directories, but you can create them manually:
 
@@ -129,13 +121,13 @@ curl http://localhost:8080/admin/system/status \
 
 ### CSV File
 ```
-data/playwell-stock-shopify-b.csv
+data/mtb-product-export.csv
 ```
 
 ### Backups
 ```
-data/backups/playwell-stock-2025-11-04T10-30-00-000Z.csv
-data/backups/playwell-stock-2025-11-03T10-30-00-000Z.csv
+data/backups/mtb-product-2025-11-10T10-30-00-000Z.csv
+data/backups/mtb-product-2025-11-09T10-30-00-000Z.csv
 ...
 ```
 
@@ -158,12 +150,10 @@ Two authentication methods are supported:
 ### Best Practices
 
 1. **Use strong, unique credentials:**
-   - FTP password should be complex
    - API key should be randomly generated
    - JWT secrets should be long and random
 
 2. **Rotate credentials regularly:**
-   - Change FTP password quarterly
    - Rotate API keys annually
    - Update JWT secrets on security events
 
@@ -175,36 +165,29 @@ Two authentication methods are supported:
 4. **Monitor logs:**
    - Check for failed sync attempts
    - Review backup retention
+   - Monitor CSV file size changes
    - Watch for authentication failures
 
 ## Troubleshooting
 
-### Sync Fails: "Connection refused"
+### Sync Fails: "Connection refused" or "HTTP error"
 
-**Cause:** Cannot connect to FTP server
-
-**Solutions:**
-1. Verify FTP host is correct: `PLAYWELL_FTP_HOST=161.35.45.163`
-2. Check firewall allows outbound FTP (port 21)
-3. Verify network connectivity: `ping 161.35.45.163`
-
-### Sync Fails: "Authentication failed"
-
-**Cause:** Invalid FTP credentials
+**Cause:** Cannot connect to muaythai-boxing.com CSV URL
 
 **Solutions:**
-1. Verify username and password in `.env`
-2. Check for typos or extra spaces
-3. Contact Playwell support to verify credentials
+1. Verify CSV URL is correct in `.env` or using default
+2. Check internet connectivity
+3. Verify the CSV file is still available at the URL
+4. Check if the URL has changed (contact supplier)
 
 ### Sync Fails: "File not found"
 
 **Cause:** Remote CSV file missing or moved
 
 **Solutions:**
-1. Verify file path: `/playwell-stock-shopify-b.csv`
-2. Check Playwell email for file location updates
-3. Contact Playwell support
+1. Verify MTB_CSV_URL in `.env` is correct
+2. Check if muaythai-boxing.com has updated their data feed URL
+3. Contact muaythai-boxing.com support
 
 ### Backups Fill Up Disk Space
 
@@ -214,7 +197,7 @@ Two authentication methods are supported:
 1. Backups auto-delete after 30 days
 2. Manually clean old backups:
    ```bash
-   rm data/backups/playwell-stock-2025-10-*.csv
+   rm data/backups/mtb-product-2025-10-*.csv
    ```
 3. Adjust retention period in `csvSyncService.ts`
 
@@ -233,10 +216,10 @@ After CSV sync completes on the backend, you need to update the frontend:
 
 ### Option 1: Manual Frontend Update
 
-1. Backend syncs CSV from FTP
+1. Backend syncs CSV from muaythai-boxing.com
 2. Copy updated CSV to frontend:
    ```bash
-   cp data/playwell-stock-shopify-b.csv ../final-bell-marketing/src/assets/
+   cp data/mtb-product-export.csv ../final-bell-marketing/src/assets/
    ```
 3. Run frontend import script:
    ```bash
@@ -258,7 +241,7 @@ curl -X POST http://localhost:8080/admin/csv/sync-cron \
 sleep 5
 
 # Copy CSV to frontend
-cp data/playwell-stock-shopify-b.csv ../final-bell-marketing/src/assets/
+cp data/mtb-product-export.csv ../final-bell-marketing/src/assets/
 
 # Run frontend import
 cd ../final-bell-marketing
@@ -294,17 +277,16 @@ The system logs all sync operations:
 
 ```
 [CSV Sync] Starting CSV sync...
-[CSV Sync] Connecting to FTP server: 161.35.45.163
-[CSV Sync] Connected to FTP server
-[CSV Sync] Downloaded CSV: 4554682 bytes
-[CSV Sync] Backup created: data/backups/playwell-stock-2025-11-04T10-30-00-000Z.csv
+[CSV Sync] Downloading CSV from: https://app.matrixify.app/files/...
+[CSV Sync] Downloaded CSV: 1896450 bytes
+[CSV Sync] Backup created: data/backups/mtb-product-2025-11-10T10-30-00-000Z.csv
 [CSV Sync] Sync completed in 2345ms
 ```
 
 ### Metrics to Monitor
 
 1. **Sync success rate** - Should be close to 100%
-2. **File size** - Should be ~4.5MB (watch for significant changes)
+2. **File size** - Should be ~1.9MB (watch for significant changes)
 3. **Sync duration** - Usually 2-5 seconds
 4. **Backup count** - Should maintain ~30 backups
 
@@ -366,12 +348,13 @@ CMD ["node", "dist/server.js"]
 ## Support
 
 For issues with:
-- **CSV format**: Contact Playwell support
-- **FTP access**: Check Playwell email for credentials
+- **CSV format**: Contact muaythai-boxing.com support
+- **CSV URL access**: Check with supplier for URL updates
 - **Sync system**: Review logs and this documentation
 - **Backend API**: Check server logs and health endpoint
 
 ---
 
-**Last Updated:** 2025-11-04
-**Version:** 1.0.0
+**Last Updated:** 2025-11-10
+**Version:** 2.0.0
+**Supplier:** muaythai-boxing.com

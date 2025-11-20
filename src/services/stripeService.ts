@@ -51,6 +51,16 @@ export async function createCheckoutSession(params: CreateCheckoutSessionParams)
         shipping_address_collection: {
             allowed_countries: ['GB'], // UK only
         },
+
+        shipping_options: [
+            {
+                shipping_rate_data: {
+                    type: 'fixed_amount',
+                    fixed_amount: { amount: 0, currency: 'gbp' },
+                    display_name: 'Standard Shipping (3-5 business days)',
+                },
+            },
+        ],
         billing_address_collection: 'required',
         metadata: {
             source: 'final-bell-marketing',
@@ -79,5 +89,7 @@ export async function handleWebhook(payload: string | Buffer, signature: string)
 }
 
 export async function retrieveSession(sessionId: string): Promise<Stripe.Checkout.Session> {
-    return await stripe.checkout.sessions.retrieve(sessionId);
+    return await stripe.checkout.sessions.retrieve(sessionId, {
+        expand: ['line_items', 'customer', 'shipping_details'],
+    });
 }
