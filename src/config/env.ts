@@ -14,7 +14,7 @@ if (nodeEnv === 'production') {
     const envPath = path.resolve(process.cwd(), envFile);
 
     if (fs.existsSync(envPath)) {
-        config({ path: envPath });
+        config({ path: envPath, override: true });
         console.log(`Loading environment from: ${envFile}`);
     } else {
         console.log('No .env file found, using system environment variables');
