@@ -17,7 +17,7 @@ import { apiLimiter } from './middleware/rateLimiter';
 import { ipBlacklistMiddleware } from './middleware/ipBlacklist';
 import { errorHandler, notFoundHandler } from './middleware/errorHandler';
 import { requestLogger } from './utils/logger';
-import mongoSanitize from 'express-mongo-sanitize';
+// import mongoSanitize from 'express-mongo-sanitize';
 import hpp from 'hpp';
 
 const app = express();
@@ -150,14 +150,21 @@ const startServer = async () => {
         // Connect to database
         await connectDatabase();
 
-        // Load IP blacklist on startup
+        // Load IP blacklist on startup (non-blocking)
         console.log('Loading IP blacklist...');
-        try {
-            await ipBlacklistService.loadFromFile();
-        } catch (error) {
-            console.warn('Failed to load blacklist from file, fetching from sources...');
-            await ipBlacklistService.updateBlacklist();
-        }
+        ipBlacklistService.loadFromFile()
+            .then(() => {
+                const stats = ipBlacklistService.getStats();
+                console.log(`✓ IP Blacklist loaded: ${stats.count} IPs`);
+            })
+            .catch(() => {
+                console.warn('Failed to load blacklist from file, fetching from sources...');
+                return ipBlacklistService.updateBlacklist();
+            })
+            .catch((error) => {
+                console.error('Failed to update blacklist:', error);
+                console.warn('⚠ Server starting without IP blacklist protection');
+            });
 
         // Start scheduler for CSV sync
         schedulerService.start();
@@ -181,8 +188,6 @@ const startServer = async () => {
             console.log(`✓ Server running on port ${PORT}`);
             console.log(`✓ Environment: ${env.NODE_ENV}`);
             console.log(`✓ Health check: http://localhost:${PORT}/health`);
-            const stats = ipBlacklistService.getStats();
-            console.log(`✓ IP Blacklist loaded: ${stats.count} IPs`);
         });
     } catch (error) {
         console.error('Failed to start server:', error);
