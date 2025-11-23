@@ -75,3 +75,14 @@ tmp/
 *.pem
 *.key
 *.cert
+
+# Documentation (local only)
+EMAIL-SETUP-GUIDE.md
+WEBHOOK-TESTING-GUIDE.md
+
+# Stripe CLI
+stripe_cli/
+stripe_cli.zip
+
+# Windows null file
+nul
