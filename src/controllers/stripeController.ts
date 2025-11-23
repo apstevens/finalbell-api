@@ -34,7 +34,7 @@ export const createCheckout = async (req: Request, res: Response) => {
             cancelUrl,
         });
 
-        res.json({ sessionId: session.id });
+        res.json({ sessionId: session.id, url: session.url });
     } catch (error) {
         console.error('Error creating checkout session:', error);
         res.status(500).json({
@@ -78,7 +78,9 @@ export const handleStripeWebhook = async (req: Request, res: Response) => {
 
                     // Extract customer details
                     const customerDetails = fullSession.customer_details;
-                    const shippingDetails = (fullSession as any).shipping_details;
+                    const shippingDetails = (fullSession as any).collected_information?.shipping_details ||
+                                          (fullSession as any).shipping ||
+                                          (fullSession as any).shipping_details;
 
                     if (!customerDetails || !shippingDetails) {
                         console.error('[Stripe Webhook] Missing customer or shipping details:', session.id);

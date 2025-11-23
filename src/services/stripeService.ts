@@ -90,6 +90,6 @@ export async function handleWebhook(payload: string | Buffer, signature: string)
 
 export async function retrieveSession(sessionId: string): Promise<Stripe.Checkout.Session> {
     return await stripe.checkout.sessions.retrieve(sessionId, {
-        expand: ['line_items', 'customer', 'shipping_details'],
+        expand: ['line_items', 'customer'],
     });
 }
