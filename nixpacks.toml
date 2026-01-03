@@ -1,0 +1,14 @@
+# Nixpacks configuration for Railway
+# https://nixpacks.com/docs/configuration/file
+
+[phases.setup]
+nixPkgs = ["nodejs-20_x", "openssl"]
+
+[phases.install]
+cmds = ["npm ci"]
+
+[phases.build]
+cmds = ["npm run build", "npx prisma generate", "npx prisma migrate deploy"]
+
+[start]
+cmd = "npm run start:prod"
