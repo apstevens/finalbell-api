@@ -60,7 +60,14 @@
       "Bash(stripe.exe --version:*)",
       "Bash(.\\stripe_cli\\stripe.exe:*)",
       "Bash(railway run npm:*)",
-      "Bash(.stripe_clistripe.exe listen --forward-to localhost:8080/stripe/webhook)"
+      "Bash(.stripe_clistripe.exe listen --forward-to localhost:8080/stripe/webhook)",
+      "Bash(curl:*)",
+      "Bash(timeout:*)",
+      "Bash(npx wrangler:*)",
+      "Bash(del public_redirects)",
+      "Bash(railway up:*)",
+      "Bash(railway service:*)",
+      "Bash(railway link:*)"
     ],
     "deny": [],
     "ask": []

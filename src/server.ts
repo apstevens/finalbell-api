@@ -11,6 +11,10 @@ import adminRoutes from './routes/adminRoutes';
 import stripeRoutes from './routes/stripeRoutes';
 import productRoutes from './routes/productRoutes';
 import orderRoutes from './routes/orderRoutes';
+import reviewRoutes from './routes/reviewRoutes';
+import wishlistRoutes from './routes/wishlistRoutes';
+import loyaltyRoutes from './routes/loyaltyRoutes';
+import abandonedCartRoutes from './routes/abandonedCartRoutes';
 import { schedulerService } from './services/schedulerService';
 import { ipBlacklistService } from './services/ipBlacklistService';
 import { apiLimiter } from './middleware/rateLimiter';
@@ -123,6 +127,12 @@ app.use('/admin', adminRoutes);
 app.use('/stripe', stripeRoutes);
 app.use('/products', productRoutes);
 app.use('/orders', orderRoutes);
+
+// E-commerce feature routes
+app.use('/reviews', reviewRoutes);
+app.use('/wishlist', wishlistRoutes);
+app.use('/loyalty', loyaltyRoutes);
+app.use('/abandoned-cart', abandonedCartRoutes);
 
 // 404 handler - must be after all routes
 app.use(notFoundHandler);

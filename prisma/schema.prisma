@@ -74,6 +74,11 @@ model User {
   receivedMessages Message[] @relation("ReceivedMessages")
   refreshTokens    RefreshToken[]
 
+  // E-commerce
+  productReviews   ProductReview[]
+  wishlists        Wishlist[]
+  loyaltyPoints    LoyaltyPoints?
+
   @@index([email])
   @@index([role])
 }
@@ -553,4 +558,93 @@ model OrderStatusHistory {
   createdAt DateTime    @default(now())
 
   @@index([orderId, createdAt])
+}
+
+model ProductReview {
+  id          String   @id @default(uuid())
+  productSku  String
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  rating      Int      // 1-5 stars
+  title       String
+  review      String   @db.Text
+  verified    Boolean  @default(false) // Verified purchase
+  helpful     Int      @default(0)
+  notHelpful  Int      @default(0)
+  images      String[] // Review photos
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([productSku])
+  @@index([userId])
+  @@index([rating])
+  @@index([createdAt])
+}
+
+model Wishlist {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  productSku String
+  addedAt   DateTime @default(now())
+
+  @@unique([userId, productSku])
+  @@index([userId])
+  @@index([productSku])
+}
+
+model AbandonedCart {
+  id              String   @id @default(uuid())
+  userId          String?
+  email           String
+  cartItems       Json
+  total           Float
+  abandonedAt     DateTime @default(now())
+  emailSentAt     DateTime?
+  recovered       Boolean  @default(false)
+  recoveredAt     DateTime?
+  couponCode      String?  // Optional discount to incentivize
+
+  @@index([email])
+  @@index([userId])
+  @@index([abandonedAt])
+  @@index([recovered])
+}
+
+model LoyaltyPoints {
+  id            String   @id @default(uuid())
+  userId        String   @unique
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  points        Int      @default(0)
+  lifetime      Int      @default(0) // Total points ever earned
+  tier          LoyaltyTier @default(BRONZE)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  transactions  PointTransaction[]
+
+  @@index([userId])
+  @@index([tier])
+}
+
+model PointTransaction {
+  id          String   @id @default(uuid())
+  loyaltyId   String
+  loyalty     LoyaltyPoints @relation(fields: [loyaltyId], references: [id], onDelete: Cascade)
+  points      Int      // Can be negative for redemptions
+  type        String   // PURCHASE, REVIEW, REFERRAL, REDEMPTION
+  description String
+  orderId     String?
+  createdAt   DateTime @default(now())
+
+  @@index([loyaltyId])
+  @@index([type])
+  @@index([createdAt])
+}
+
+enum LoyaltyTier {
+  BRONZE
+  SILVER
+  GOLD
+  PLATINUM
 }

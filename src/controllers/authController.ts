@@ -86,7 +86,7 @@ export const register = async (req: Request, res: Response): Promise<void> => {
     // Set refresh token in HTTP-only cookie
     res.cookie('refreshToken', refreshToken, {
       httpOnly: true,
-      secure: true,
+      secure: process.env.NODE_ENV === 'production', // Only require HTTPS in production
       sameSite: 'lax',
       maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
       domain: process.env.NODE_ENV === 'production' ? '.finalbell.co.uk' : undefined
@@ -158,7 +158,7 @@ export const login = async (req: Request, res: Response): Promise<void> => {
     // Set refresh token in HTTP-only cookie
     res.cookie('refreshToken', refreshToken, {
       httpOnly: true,
-      secure: true,
+      secure: process.env.NODE_ENV === 'production', // Only require HTTPS in production
       sameSite: 'lax',
       maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
       domain: process.env.NODE_ENV === 'production' ? '.finalbell.co.uk' : undefined
