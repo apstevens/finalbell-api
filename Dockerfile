@@ -17,18 +17,15 @@ RUN npm ci && npm cache clean --force
 COPY src ./src
 COPY prisma ./prisma
 
-# Verify tsconfig exists and build TypeScript
-RUN ls -la && \
-    echo "=== Checking tsconfig.json ===" && \
-    test -f tsconfig.json && cat tsconfig.json && \
-    echo "=== Running build ===" && \
+# Generate Prisma Client and build TypeScript
+RUN npx prisma generate && \
     npm run build
 
 # Production stage
 FROM node:20-alpine AS production
 
 # Install dumb-init for proper signal handling
-RUN apk add --no-cache dumb-init
+RUN apk add --no-cache dumb-init openssl
 
 # Create app user for security
 RUN addgroup -g 1001 -S nodejs && adduser -S nodejs -u 1001
@@ -38,6 +35,7 @@ WORKDIR /app
 
 # Copy built application from builder
 COPY --from=builder --chown=nodejs:nodejs /app/dist ./dist
+COPY --from=builder --chown=nodejs:nodejs /app/node_modules/.prisma ./node_modules/.prisma
 COPY --from=builder --chown=nodejs:nodejs /app/prisma ./prisma
 
 # Copy package files and install only production dependencies
@@ -60,5 +58,5 @@ HEALTHCHECK --interval=30s --timeout=3s --start-period=40s --retries=3 \
 # Use dumb-init to handle signals properly
 ENTRYPOINT ["dumb-init", "--"]
 
-# Start the application
-CMD ["node", "dist/server.js"]
+# Run migrations and start the application
+CMD ["sh", "-c", "npx prisma migrate deploy && node dist/server.js"]
