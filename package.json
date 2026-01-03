@@ -11,7 +11,9 @@
     "build": "npx prisma generate && tsc",
     "start": "cross-env NODE_ENV=production node dist/server.js",
     "start:prod": "cross-env NODE_ENV=production node dist/server.js",
-    "lint": "echo \"Linting not configured yet\""
+    "lint": "echo \"Linting not configured yet\"",
+    "check-secrets": "node scripts/check-secrets.js",
+    "generate-secrets": "node scripts/generate-secrets.js"
   },
   "keywords": [],
   "author": "",
