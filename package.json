@@ -9,8 +9,10 @@
     "test:coverage": "jest --coverage",
     "dev": "cross-env NODE_ENV=development ts-node src/server.ts",
     "build": "npx prisma generate && tsc",
-    "start": "cross-env NODE_ENV=production node dist/server.js",
-    "start:prod": "cross-env NODE_ENV=production node dist/server.js",
+    "start": "NODE_ENV=production node dist/server.js",
+    "start:prod": "NODE_ENV=production node dist/server.js",
+    "railway:build": "npm ci && npx prisma generate && npm run build",
+    "railway:start": "npx prisma migrate deploy && NODE_ENV=production node dist/server.js",
     "lint": "echo \"Linting not configured yet\"",
     "check-secrets": "node scripts/check-secrets.js",
     "generate-secrets": "node scripts/generate-secrets.js"
