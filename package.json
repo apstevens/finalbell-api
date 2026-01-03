@@ -2,7 +2,7 @@
   "name": "final-bell-api",
   "version": "1.0.0",
   "description": "",
-  "main": "index.js",
+  "main": "dist/server.js",
   "engines": {
     "node": "20.x",
     "npm": "10.x"
@@ -12,8 +12,9 @@
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
     "dev": "cross-env NODE_ENV=development ts-node src/server.ts",
+    "postinstall": "npx prisma generate",
     "build": "npx prisma generate && tsc",
-    "start": "NODE_ENV=production node dist/server.js",
+    "start": "npx prisma migrate deploy && node dist/server.js",
     "start:prod": "NODE_ENV=production node dist/server.js",
     "railway:build": "npm ci && npx prisma generate && npm run build",
     "railway:start": "npx prisma migrate deploy && NODE_ENV=production node dist/server.js",
