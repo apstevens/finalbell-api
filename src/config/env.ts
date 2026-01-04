@@ -141,17 +141,17 @@ export const env: EnvConfig = {
   REFRESH_TOKEN_EXPIRES_IN: getEnvVar('REFRESH_TOKEN_EXPIRES_IN', '7d'),
 
   // CORS
-  ALLOWED_ORIGINS: getArrayEnvVar('ALLOWED_ORIGINS', ['https://finalbell.co.uk', 'https://www.finalbell.co.uk']),
+  ALLOWED_ORIGINS: getArrayEnvVar('ALLOWED_ORIGINS', ['https://shop.finalbell.co.uk', 'https://www.shop.finalbell.co.uk']),
 
   // File Upload
   MAX_FILE_SIZE: getNumberEnvVar('MAX_FILE_SIZE', 10485760), // 10MB default
   UPLOAD_DIR: getEnvVar('UPLOAD_DIR', 'uploads'),
 
   // AWS S3 (Optional)
-  AWS_ACCESS_KEY_ID: getOptionalEnvVar('AWS_ACCESS_KEY_ID'),
-  AWS_SECRET_ACCESS_KEY: getOptionalEnvVar('AWS_SECRET_ACCESS_KEY'),
-  AWS_REGION: getOptionalEnvVar('AWS_REGION', 'eu-west-2'),
-  AWS_S3_BUCKET: getOptionalEnvVar('AWS_S3_BUCKET'),
+  // AWS_ACCESS_KEY_ID: getOptionalEnvVar('AWS_ACCESS_KEY_ID'),
+  // AWS_SECRET_ACCESS_KEY: getOptionalEnvVar('AWS_SECRET_ACCESS_KEY'),
+  // AWS_REGION: getOptionalEnvVar('AWS_REGION', 'eu-west-2'),
+  // AWS_S3_BUCKET: getOptionalEnvVar('AWS_S3_BUCKET'),
 
   // Cloudinary (Optional)
   CLOUDINARY_CLOUD_NAME: getOptionalEnvVar('CLOUDINARY_CLOUD_NAME'),
@@ -164,7 +164,7 @@ export const env: EnvConfig = {
   SMTP_SECURE: getBooleanEnvVar('SMTP_SECURE', false),
   SMTP_USER: getOptionalEnvVar('SMTP_USER'),
   SMTP_PASSWORD: getOptionalEnvVar('SMTP_PASSWORD'),
-  EMAIL_FROM: getOptionalEnvVar('EMAIL_FROM', 'noreply@finalbell.co.uk'),
+  EMAIL_FROM: getOptionalEnvVar('EMAIL_FROM', 'hello@finalbell.co.uk'),
   ADMIN_EMAIL: getOptionalEnvVar('ADMIN_EMAIL'),
 
   // Stripe
@@ -177,7 +177,7 @@ export const env: EnvConfig = {
   RATE_LIMIT_MAX_REQUESTS: getNumberEnvVar('RATE_LIMIT_MAX_REQUESTS', 100),
 
   // Client
-  CLIENT_URL: getEnvVar('CLIENT_URL', 'https://finalbell.co.uk'),
+  CLIENT_URL: getEnvVar('CLIENT_URL', 'https://shop.finalbell.co.uk'),
 
   // Muaythai-Boxing.com CSV
   MTB_CSV_URL: getOptionalEnvVar('MTB_CSV_URL', 'https://app.matrixify.app/files/hx1kg2-jn/a9c39b060fb5c913dcb623116952f087/mtb-product-export.csv'),
