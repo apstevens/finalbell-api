@@ -46,7 +46,8 @@ describe('Authentication Tests', () => {
       // Verify refresh token cookie is set
       const cookies = response.headers['set-cookie'];
       expect(cookies).toBeDefined();
-      expect(cookies.some((cookie: string) => cookie.includes('refreshToken'))).toBe(true);
+      const cookieArray = Array.isArray(cookies) ? cookies : [cookies as string];
+      expect(cookieArray.some((cookie: string) => cookie.includes('refreshToken'))).toBe(true);
 
       testUser = response.body.user;
     });
@@ -131,7 +132,8 @@ describe('Authentication Tests', () => {
       // Verify refresh token cookie is set
       const cookies = response.headers['set-cookie'];
       expect(cookies).toBeDefined();
-      expect(cookies.some((cookie: string) => cookie.includes('refreshToken'))).toBe(true);
+      const cookieArray = Array.isArray(cookies) ? cookies : [cookies as string];
+      expect(cookieArray.some((cookie: string) => cookie.includes('refreshToken'))).toBe(true);
     });
 
     it('should reject login with incorrect password', async () => {
@@ -199,9 +201,10 @@ describe('Authentication Tests', () => {
         });
 
       const cookies = response.headers['set-cookie'];
-      refreshTokenCookie = cookies.find((cookie: string) =>
+      const cookieArray = Array.isArray(cookies) ? cookies : [cookies as string];
+      refreshTokenCookie = cookieArray.find((cookie: string) =>
         cookie.includes('refreshToken')
-      );
+      ) || '';
     });
 
     it('should refresh access token with valid refresh token', async () => {
@@ -245,9 +248,10 @@ describe('Authentication Tests', () => {
         });
 
       const cookies = response.headers['set-cookie'];
-      refreshTokenCookie = cookies.find((cookie: string) =>
+      const cookieArray = Array.isArray(cookies) ? cookies : [cookies as string];
+      refreshTokenCookie = cookieArray.find((cookie: string) =>
         cookie.includes('refreshToken')
-      );
+      ) || '';
     });
 
     it('should logout and clear refresh token', async () => {
@@ -261,7 +265,8 @@ describe('Authentication Tests', () => {
       // Verify refresh token cookie is cleared
       const cookies = response.headers['set-cookie'];
       expect(cookies).toBeDefined();
-      const refreshCookie = cookies.find((cookie: string) =>
+      const cookieArray = Array.isArray(cookies) ? cookies : [cookies as string];
+      const refreshCookie = cookieArray.find((cookie: string) =>
         cookie.includes('refreshToken')
       );
       expect(refreshCookie).toContain('Max-Age=0');

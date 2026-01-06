@@ -90,6 +90,11 @@ interface EnvConfig {
   // IP Blacklist
   IP_BLACKLIST_ENABLED: boolean;
   IP_BLACKLIST_UPDATE_INTERVAL_HOURS: number;
+
+  // UAT Protection
+  UAT_ENABLED: boolean;
+  UAT_USERNAME?: string;
+  UAT_PASSWORD?: string;
 }
 
 const getEnvVar = (key: string, defaultValue?: string): string => {
@@ -188,6 +193,11 @@ export const env: EnvConfig = {
   // IP Blacklist
   IP_BLACKLIST_ENABLED: getBooleanEnvVar('IP_BLACKLIST_ENABLED', true),
   IP_BLACKLIST_UPDATE_INTERVAL_HOURS: getNumberEnvVar('IP_BLACKLIST_UPDATE_INTERVAL_HOURS', 24),
+
+  // UAT Protection
+  UAT_ENABLED: getBooleanEnvVar('UAT_ENABLED', false),
+  UAT_USERNAME: getOptionalEnvVar('UAT_USERNAME'),
+  UAT_PASSWORD: getOptionalEnvVar('UAT_PASSWORD'),
 };
 
 // Validate critical environment variables on startup
@@ -212,7 +222,18 @@ export const validateEnv = (): void => {
 
   if (env.REFRESH_TOKEN_SECRET.length < 32) {
     throw new Error('REFRESH_TOKEN_SECRET must be at least 32 characters long');
-  } 
+  }
+
+  // Validate UAT credentials if UAT mode is enabled
+  if (env.UAT_ENABLED) {
+    if (!env.UAT_USERNAME || !env.UAT_PASSWORD) {
+      throw new Error('UAT_USERNAME and UAT_PASSWORD are required when UAT_ENABLED is true');
+    }
+    if (env.UAT_PASSWORD.length < 8) {
+      throw new Error('UAT_PASSWORD must be at least 8 characters long');
+    }
+    console.log('✓ UAT mode enabled - Basic authentication will be required');
+  }
 
   console.log('✓ Environment variables validated');
 };

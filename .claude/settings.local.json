@@ -67,7 +67,8 @@
       "Bash(del public_redirects)",
       "Bash(railway up:*)",
       "Bash(railway service:*)",
-      "Bash(railway link:*)"
+      "Bash(railway link:*)",
+      "Bash(npm test:*)"
     ],
     "deny": [],
     "ask": []

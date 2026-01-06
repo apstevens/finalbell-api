@@ -19,6 +19,7 @@ import { schedulerService } from './services/schedulerService';
 import { ipBlacklistService } from './services/ipBlacklistService';
 import { apiLimiter } from './middleware/rateLimiter';
 import { ipBlacklistMiddleware } from './middleware/ipBlacklist';
+import { uatAuthMiddleware } from './middleware/uatAuth';
 import { errorHandler, notFoundHandler } from './middleware/errorHandler';
 import { requestLogger } from './utils/logger';
 // import mongoSanitize from 'express-mongo-sanitize';
@@ -99,6 +100,9 @@ app.use(apiLimiter);
 
 // Apply IP blacklist middleware (blocks requests from malicious IPs)
 app.use(ipBlacklistMiddleware);
+
+// Apply UAT authentication (only active when UAT_ENABLED=true)
+app.use(uatAuthMiddleware);
 
 // Health check endpoint
 app.get('/health', async (_req, res) => {
@@ -205,4 +209,10 @@ const startServer = async () => {
     }
 };
 
-startServer();
+// Only start the server if this file is run directly (not imported for testing)
+if (require.main === module) {
+    startServer();
+}
+
+// Export app for testing
+export default app;

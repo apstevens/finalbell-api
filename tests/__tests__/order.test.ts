@@ -598,7 +598,7 @@ describe('Order Management and Tracking Tests', () => {
       );
 
       expect(order?.subtotal).toBe(itemsTotal);
-      expect(order?.total).toBe(order?.subtotal + order?.shippingCost + order?.tax);
+      expect(order?.total).toBe((order?.subtotal || 0) + (order?.shippingCost || 0) + (order?.tax || 0));
     });
   });
 });

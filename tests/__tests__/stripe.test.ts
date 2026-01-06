@@ -2,7 +2,7 @@
  * Stripe Service Tests
  */
 
-import { CheckoutItem } from '../services/stripeService';
+import { CheckoutItem } from '../../src/services/stripeService';
 
 describe('Stripe Service', () => {
   describe('CheckoutItem validation', () => {

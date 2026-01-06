@@ -1,6 +1,21 @@
 /**
  * Shipping Service
- * Calculates shipping costs based on cart weight and provides shipping options
+ * Calculates shipping costs based on cart weight and destination
+ *
+ * All parcels are sent by express courier to ensure the highest level of service
+ * and tracking information for peace of mind and a reduction in lost parcels.
+ *
+ * Couriers:
+ * - DHL for all parcels under 30kg
+ * - DX Freight for all filled punchbag deliveries (over 30kg)
+ *
+ * Dispatch:
+ * - Monday-Friday operations
+ * - Same day or next working day dispatch where possible
+ * - Maximum 2 day dispatch time during busy periods
+ *
+ * Delivery Times:
+ * - Mainland UK: Next day delivery (2-3 days for northern Scotland and UK-offshore)
  */
 
 import { CheckoutItem } from './stripeService';
@@ -11,20 +26,11 @@ export interface ShippingRate {
   amount: number; // in pence
   minDays: number;
   maxDays: number;
+  courier?: string;
+  restrictions?: string[];
 }
 
-/**
- * UK Shipping Rate Tiers
- * Adjust these rates according to your business needs
- */
-const SHIPPING_TIERS = [
-  { maxWeight: 500, standard: 395, express: 695 },     // Up to 500g: £3.95 / £6.95
-  { maxWeight: 1000, standard: 495, express: 895 },    // Up to 1kg: £4.95 / £8.95
-  { maxWeight: 2000, standard: 695, express: 1195 },   // Up to 2kg: £6.95 / £11.95
-  { maxWeight: 5000, standard: 995, express: 1695 },   // Up to 5kg: £9.95 / £16.95
-  { maxWeight: 10000, standard: 1495, express: 2495 }, // Up to 10kg: £14.95 / £24.95
-  { maxWeight: Infinity, standard: 1995, express: 2995 }, // Over 10kg: £19.95 / £29.95
-];
+export type ShippingRegion = 'MAINLAND_UK' | 'NORTHERN_IRELAND' | 'UK_OFFSHORE' | 'EU';
 
 /**
  * Default weight for products not found in CSV (in grams)
@@ -32,9 +38,9 @@ const SHIPPING_TIERS = [
 const DEFAULT_PRODUCT_WEIGHT = 500;
 
 /**
- * Free shipping threshold (in pence)
+ * Weight threshold for filled punchbags (in grams)
  */
-const FREE_SHIPPING_THRESHOLD = 10000; // £100
+const FILLED_PUNCHBAG_WEIGHT = 30000; // 30kg
 
 /**
  * Calculate total weight of items in cart
@@ -73,62 +79,196 @@ async function calculateTotalWeight(items: CheckoutItem[]): Promise<number> {
 }
 
 /**
- * Calculate total cart value (in pence)
+ * Calculate shipping cost for Mainland UK
+ * Standard: £5 per 10kg
+ * Wholesale (over 100kg): £5 per 10kg up to 100kg, then £10 per 20kg
  */
-function calculateCartTotal(items: CheckoutItem[]): number {
-  return items.reduce((sum, item) => sum + (Math.round(item.price * 100) * item.quantity), 0);
+function calculateMainlandUKShipping(weightGrams: number): number {
+  const weightKg = weightGrams / 1000;
+
+  if (weightKg <= 100) {
+    // Standard pricing: £5 per 10kg
+    const units = Math.ceil(weightKg / 10);
+    return units * 500; // £5.00 in pence
+  } else {
+    // Wholesale pricing: £5 per 10kg up to 100kg, then £10 per 20kg
+    const baseCharge = 10 * 500; // First 100kg: 10 units of £5
+    const remainingKg = weightKg - 100;
+    const additionalUnits = Math.ceil(remainingKg / 20);
+    const additionalCharge = additionalUnits * 1000; // £10.00 per 20kg
+    return baseCharge + additionalCharge;
+  }
 }
 
 /**
- * Get shipping rates based on cart items
+ * Calculate shipping cost for Northern Ireland
+ * £10 up to 5kg
+ * £15 for 5-20kg
+ * £30 for 20-40kg
+ * Multiple parcels: £15 per box (max 20kg per box)
  */
-export async function getShippingRates(items: CheckoutItem[]): Promise<ShippingRate[]> {
+function calculateNorthernIrelandShipping(weightGrams: number): { amount: number; restrictions: string[] } {
+  const weightKg = weightGrams / 1000;
+  const restrictions: string[] = [];
+
+  // Cannot deliver filled punchbags
+  if (weightKg > 30) {
+    restrictions.push('Cannot deliver filled punchbags to Northern Ireland');
+    // Calculate as multiple parcels
+    const numBoxes = Math.ceil(weightKg / 20);
+    return { amount: numBoxes * 1500, restrictions }; // £15 per box
+  }
+
+  if (weightKg <= 5) {
+    return { amount: 1000, restrictions }; // £10.00
+  } else if (weightKg <= 20) {
+    return { amount: 1500, restrictions }; // £15.00
+  } else if (weightKg <= 40) {
+    return { amount: 3000, restrictions }; // £30.00
+  } else {
+    // Multiple parcels
+    const numBoxes = Math.ceil(weightKg / 20);
+    return { amount: numBoxes * 1500, restrictions }; // £15 per box
+  }
+}
+
+/**
+ * Calculate shipping cost for UK Offshore Islands (Jersey, Guernsey, Isle of Man)
+ * £15 up to 5kg
+ * £20 for 5-20kg
+ * £25 for 20-40kg
+ * Multiple parcels: £20 per box (max 20kg per box)
+ * Note: Orders not charged VAT, customs fees are customer's responsibility
+ */
+function calculateUKOffshoreShipping(weightGrams: number): { amount: number; restrictions: string[] } {
+  const weightKg = weightGrams / 1000;
+  const restrictions: string[] = ['VAT not charged - customs fees are your responsibility'];
+
+  // Cannot deliver filled punchbags
+  if (weightKg > 30) {
+    restrictions.push('Cannot deliver filled punchbags to UK Offshore addresses');
+    // Calculate as multiple parcels
+    const numBoxes = Math.ceil(weightKg / 20);
+    return { amount: numBoxes * 2000, restrictions }; // £20 per box
+  }
+
+  if (weightKg <= 5) {
+    return { amount: 1500, restrictions }; // £15.00
+  } else if (weightKg <= 20) {
+    return { amount: 2000, restrictions }; // £20.00
+  } else if (weightKg <= 40) {
+    return { amount: 2500, restrictions }; // £25.00
+  } else {
+    // Multiple parcels
+    const numBoxes = Math.ceil(weightKg / 20);
+    return { amount: numBoxes * 2000, restrictions }; // £20 per box
+  }
+}
+
+/**
+ * Determine shipping region from postcode or country
+ */
+export function determineShippingRegion(postcode?: string, country?: string): ShippingRegion {
+  if (!country || country.toUpperCase() === 'GB' || country.toUpperCase() === 'UK') {
+    // Check for Northern Ireland postcodes
+    if (postcode && /^BT\d/i.test(postcode)) {
+      return 'NORTHERN_IRELAND';
+    }
+    // Check for offshore islands
+    if (postcode && (/^(JE|GY|IM)\d/i.test(postcode) || /^HS\d/i.test(postcode))) {
+      return 'UK_OFFSHORE';
+    }
+    return 'MAINLAND_UK';
+  }
+
+  // EU countries - currently not available
+  const euCountries = ['FR', 'DE', 'ES', 'IT', 'NL', 'BE', 'IE', 'PT', 'AT', 'SE', 'DK', 'FI', 'PL', 'CZ', 'RO', 'GR'];
+  if (euCountries.includes(country.toUpperCase())) {
+    return 'EU';
+  }
+
+  // Default to mainland UK for other GB addresses
+  return 'MAINLAND_UK';
+}
+
+/**
+ * Get shipping rates based on cart items and destination
+ */
+export async function getShippingRates(
+  items: CheckoutItem[],
+  region: ShippingRegion = 'MAINLAND_UK'
+): Promise<ShippingRate[]> {
   const totalWeight = await calculateTotalWeight(items);
-  const cartTotal = calculateCartTotal(items);
+  const weightKg = totalWeight / 1000;
 
-  console.log(`[Shipping] Total cart weight: ${totalWeight}g`);
-  console.log(`[Shipping] Total cart value: £${(cartTotal / 100).toFixed(2)}`);
+  console.log(`[Shipping] Total cart weight: ${totalWeight}g (${weightKg}kg)`);
+  console.log(`[Shipping] Shipping region: ${region}`);
 
-  // Check for free shipping
-  if (cartTotal >= FREE_SHIPPING_THRESHOLD) {
-    console.log(`[Shipping] Free shipping applied (cart over £${FREE_SHIPPING_THRESHOLD / 100})`);
-    return [
-      {
-        name: 'Free Standard Shipping (3-5 business days)',
-        amount: 0,
-        minDays: 3,
-        maxDays: 5,
-      },
-      {
-        name: 'Express Shipping (1-2 business days)',
-        amount: 495, // Still charge for express even with free standard shipping
-        minDays: 1,
-        maxDays: 2,
-      },
-    ];
+  // EU check
+  if (region === 'EU') {
+    throw new Error('We are currently not delivering to the EU but will be reactivating this service to certain countries later this year. Please contact us for further information.');
   }
 
-  // Find applicable tier
-  const tier = SHIPPING_TIERS.find(t => totalWeight <= t.maxWeight);
+  // Determine courier based on weight
+  const courier = totalWeight < FILLED_PUNCHBAG_WEIGHT ? 'DHL' : 'DX Freight';
+  const isFilled = totalWeight >= FILLED_PUNCHBAG_WEIGHT;
 
-  if (!tier) {
-    throw new Error(`Weight exceeds maximum shipping limit (${totalWeight}g)`);
+  let amount: number;
+  let restrictions: string[] = [];
+  let minDays = 1;
+  let maxDays = 1;
+  let displayName = 'Express Courier Delivery';
+
+  switch (region) {
+    case 'MAINLAND_UK': {
+      amount = calculateMainlandUKShipping(totalWeight);
+      // Check for northern Scotland or remote areas
+      displayName = 'Next Day Delivery (2-3 days for northern Scotland)';
+      maxDays = 3;
+      break;
+    }
+    case 'NORTHERN_IRELAND': {
+      if (isFilled) {
+        throw new Error('Cannot deliver filled punchbags to Northern Ireland');
+      }
+      const result = calculateNorthernIrelandShipping(totalWeight);
+      amount = result.amount;
+      restrictions = result.restrictions;
+      minDays = 1;
+      maxDays = 2;
+      displayName = 'Express Courier Delivery (1-2 days)';
+      break;
+    }
+    case 'UK_OFFSHORE': {
+      if (isFilled) {
+        throw new Error('Cannot deliver filled punchbags to UK Offshore addresses');
+      }
+      const result = calculateUKOffshoreShipping(totalWeight);
+      amount = result.amount;
+      restrictions = result.restrictions;
+      minDays = 2;
+      maxDays = 3;
+      displayName = 'Express Courier Delivery (2-3 days)';
+      break;
+    }
+    default:
+      throw new Error(`Unsupported shipping region: ${region}`);
   }
 
-  console.log(`[Shipping] Using tier for ${tier.maxWeight}g: Standard £${tier.standard / 100}, Express £${tier.express / 100}`);
+  console.log(`[Shipping] Courier: ${courier}`);
+  console.log(`[Shipping] Cost: £${(amount / 100).toFixed(2)}`);
+  if (restrictions.length > 0) {
+    console.log(`[Shipping] Restrictions: ${restrictions.join(', ')}`);
+  }
 
   return [
     {
-      name: 'Standard Shipping (3-5 business days)',
-      amount: tier.standard,
-      minDays: 3,
-      maxDays: 5,
-    },
-    {
-      name: 'Express Shipping (1-2 business days)',
-      amount: tier.express,
-      minDays: 1,
-      maxDays: 2,
+      name: displayName,
+      amount,
+      minDays,
+      maxDays,
+      courier,
+      restrictions: restrictions.length > 0 ? restrictions : undefined,
     },
   ];
 }

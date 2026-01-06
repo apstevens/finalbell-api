@@ -51,7 +51,7 @@ class EmailService {
     }
 
     try {
-      const from = env.EMAIL_FROM || 'Final Bell <noreply@finalbell.co.uk>';
+      const from = env.EMAIL_FROM || 'Final Bell <hello@finalbell.co.uk>';
 
       await this.transporter.sendMail({
         from,
