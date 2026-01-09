@@ -75,6 +75,7 @@ model User {
   refreshTokens    RefreshToken[]
 
   // E-commerce
+  orders           Order[]
   productReviews   ProductReview[]
   wishlists        Wishlist[]
   loyaltyPoints    LoyaltyPoints?
@@ -459,11 +460,21 @@ model Order {
   id                String      @id @default(uuid())
   orderNumber       String      @unique // Format: FB-2025-0001
 
-  // Customer Information
+  // User relationship (NULL for guest orders)
+  userId            String?
+  user              User?       @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  // Customer Information (always stored regardless of guest/authenticated)
   customerEmail     String
   customerFirstName String
   customerLastName  String
   customerPhone     String?
+
+  // Guest information (NULL for authenticated orders)
+  guestEmail        String?
+
+  // Order type for quick filtering
+  orderType         String      @default("guest") // 'authenticated' or 'guest'
 
   // Shipping Address
   shippingStreet    String
@@ -513,6 +524,9 @@ model Order {
 
   @@index([orderNumber])
   @@index([customerEmail])
+  @@index([guestEmail])
+  @@index([userId])
+  @@index([orderType])
   @@index([status])
   @@index([createdAt])
   @@index([stripeSessionId])

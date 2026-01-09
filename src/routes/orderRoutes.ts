@@ -9,13 +9,21 @@ import {
     addInternalNotes,
     cancelOrder,
     getOrderStats,
+    trackGuestOrder,
 } from '../controllers/orderController';
 import { requireAdmin } from '../middleware/adminAuth';
 
 const router = Router();
 
 /**
- * All order routes require admin authentication
+ * Public routes (guest order tracking)
+ */
+
+// Track guest order (PUBLIC - Rate limited in middleware)
+router.post('/track', trackGuestOrder);
+
+/**
+ * Admin-only routes
  */
 
 // Get order statistics

@@ -309,3 +309,68 @@ export const getOrderStats = async (req: Request, res: Response) => {
         });
     }
 };
+
+/**
+ * Track guest order by email and order number (PUBLIC ENDPOINT - Rate Limited)
+ * POST /api/orders/track
+ * Body: { email: string, orderNumber: string }
+ */
+export const trackGuestOrder = async (req: Request, res: Response) => {
+    try {
+        const { email, orderNumber } = req.body;
+
+        // Validate input
+        if (!email || typeof email !== 'string') {
+            return res.status(400).json({ error: 'Email is required' });
+        }
+
+        if (!orderNumber || typeof orderNumber !== 'string') {
+            return res.status(400).json({ error: 'Order number is required' });
+        }
+
+        // Find order
+        const order = await orderService.trackGuestOrder(email, orderNumber);
+
+        if (!order) {
+            return res.status(404).json({
+                error: 'Order not found',
+                message: 'No order found with the provided email and order number'
+            });
+        }
+
+        // Return limited order information (don't expose full shipping address for security)
+        res.json({
+            success: true,
+            order: {
+                orderNumber: order.orderNumber,
+                status: order.status,
+                orderType: order.orderType,
+                total: order.total,
+                currency: order.currency,
+                createdAt: order.createdAt,
+                shippedAt: order.shippedAt,
+                deliveredAt: order.deliveredAt,
+                trackingNumber: order.trackingNumber,
+                trackingUrl: order.trackingUrl,
+                carrier: order.carrier,
+                // Show only city and postcode for security
+                shippingCity: order.shippingCity,
+                shippingPostcode: order.shippingPostcode,
+                items: order.items.map(item => ({
+                    productName: item.productName,
+                    variantName: item.variantName,
+                    quantity: item.quantity,
+                    unitPrice: item.unitPrice,
+                    totalPrice: item.totalPrice,
+                    imageUrl: item.imageUrl,
+                })),
+            },
+        });
+    } catch (error) {
+        console.error('[Order Controller] Error tracking guest order:', error);
+        res.status(500).json({
+            error: 'Failed to track order',
+            message: error instanceof Error ? error.message : 'Unknown error',
+        });
+    }
+};

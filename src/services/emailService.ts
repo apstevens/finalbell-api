@@ -73,6 +73,8 @@ class EmailService {
    * Send order confirmation email to customer
    */
   async sendOrderConfirmation(order: Order & { items: OrderItem[] }): Promise<boolean> {
+    const isGuestOrder = order.orderType === 'guest';
+
     const itemsHtml = order.items
       .map(
         (item) => `
@@ -201,6 +203,40 @@ class EmailService {
                       <p style="margin: 2px 0; color: #4b5563;">${order.shippingCountry}</p>
                     </div>
 
+                    ${isGuestOrder ? `
+                    <!-- Guest Order Specific Message -->
+                    <div style="background-color: #fef3c7; border-left: 4px solid #f59e0b; padding: 15px; margin: 20px 0; border-radius: 4px;">
+                      <p style="margin: 0; color: #92400e; font-weight: bold;">Important: Save Your Order Number</p>
+                      <p style="margin: 5px 0 0 0; color: #92400e; font-size: 14px;">
+                        You checked out as a guest. Please save your order number <strong>${order.orderNumber}</strong> to track your order.
+                      </p>
+                      <p style="margin: 5px 0 0 0; color: #92400e; font-size: 14px;">
+                        Track your order at any time:
+                        <a href="${env.CLIENT_URL || 'https://finalbell.co.uk'}/order/track?orderNumber=${order.orderNumber}"
+                           style="color: #92400e; text-decoration: underline;">
+                          Track Order
+                        </a>
+                      </p>
+                    </div>
+
+                    <p style="color: #4b5563; font-size: 16px; line-height: 1.6;">
+                      Want to easily track all your orders in one place?
+                      <a href="${env.CLIENT_URL || 'https://finalbell.co.uk'}/register"
+                         style="color: #1f2937; font-weight: bold; text-decoration: underline;">
+                        Create an account
+                      </a>
+                    </p>
+                    ` : `
+                    <!-- Authenticated User Message -->
+                    <p style="color: #4b5563; font-size: 16px; line-height: 1.6; margin-top: 30px;">
+                      You can view your order details and track shipping in your
+                      <a href="${env.CLIENT_URL || 'https://finalbell.co.uk'}/account/orders"
+                         style="color: #1f2937; font-weight: bold; text-decoration: underline;">
+                        account dashboard
+                      </a>.
+                    </p>
+                    `}
+
                     <p style="color: #4b5563; font-size: 16px; line-height: 1.6; margin-top: 30px;">
                       We'll send you another email once your order has been shipped with tracking information.
                     </p>
@@ -253,6 +289,19 @@ ${order.customerFirstName} ${order.customerLastName}
 ${order.shippingStreet}
 ${order.shippingCity}, ${order.shippingPostcode}
 ${order.shippingCountry}
+
+${isGuestOrder ? `
+IMPORTANT: SAVE YOUR ORDER NUMBER
+You checked out as a guest. Please save your order number ${order.orderNumber} to track your order.
+
+Track your order: ${env.CLIENT_URL || 'https://finalbell.co.uk'}/order/track?orderNumber=${order.orderNumber}
+
+Want to easily track all your orders in one place?
+Create an account: ${env.CLIENT_URL || 'https://finalbell.co.uk'}/register
+` : `
+You can view your order details and track shipping in your account dashboard:
+${env.CLIENT_URL || 'https://finalbell.co.uk'}/account/orders
+`}
 
 We'll send you another email once your order has been shipped with tracking information.
 
@@ -403,6 +452,8 @@ The Final Bell Team
       return false;
     }
 
+    const isGuestOrder = order.orderType === 'guest';
+
     const itemsText = order.items
       .map(item => `- ${item.productName}${item.variantName ? ` (${item.variantName})` : ''} x${item.quantity} - £${item.totalPrice.toFixed(2)}`)
       .join('\n');
@@ -415,9 +466,10 @@ The Final Bell Team
         <title>New Order Received</title>
       </head>
       <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
-        <h2 style="color: #1f2937;">New Order Received</h2>
+        <h2 style="color: #1f2937;">New Order Received${isGuestOrder ? ' (Guest Checkout)' : ''}</h2>
 
         <p><strong>Order Number:</strong> ${order.orderNumber}</p>
+        <p><strong>Order Type:</strong> ${isGuestOrder ? '🛒 Guest Order' : '👤 Registered User'}</p>
         <p><strong>Customer:</strong> ${order.customerFirstName} ${order.customerLastName}</p>
         <p><strong>Email:</strong> ${order.customerEmail}</p>
         <p><strong>Total:</strong> £${order.total.toFixed(2)}</p>
@@ -443,9 +495,10 @@ The Final Bell Team
     `;
 
     const text = `
-NEW ORDER RECEIVED
+NEW ORDER RECEIVED${isGuestOrder ? ' (GUEST CHECKOUT)' : ''}
 
 Order Number: ${order.orderNumber}
+Order Type: ${isGuestOrder ? 'Guest Order' : 'Registered User'}
 Customer: ${order.customerFirstName} ${order.customerLastName}
 Email: ${order.customerEmail}
 Total: £${order.total.toFixed(2)}

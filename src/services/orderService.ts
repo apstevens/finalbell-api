@@ -3,11 +3,18 @@ import { PrismaClient, OrderStatus, OrderSource, Order, OrderItem } from '@prism
 const prisma = new PrismaClient();
 
 export interface CreateOrderData {
-  // Customer Information
+  // User Information (NULL for guest orders)
+  userId?: string | null;
+  orderType?: 'authenticated' | 'guest';
+
+  // Customer Information (always required)
   customerEmail: string;
   customerFirstName: string;
   customerLastName: string;
   customerPhone?: string;
+
+  // Guest Information (NULL for authenticated orders)
+  guestEmail?: string | null;
 
   // Shipping Address
   shippingStreet: string;
@@ -103,21 +110,34 @@ class OrderService {
   async createOrder(data: CreateOrderData): Promise<Order & { items: OrderItem[] }> {
     const orderNumber = await this.generateOrderNumber();
 
+    // Determine order type
+    const isGuestOrder = !data.userId || data.orderType === 'guest';
+    const orderType = isGuestOrder ? 'guest' : 'authenticated';
+
     const order = await prisma.order.create({
       data: {
         orderNumber,
+        // User relationship (NULL for guest orders)
+        userId: data.userId || null,
+        orderType,
+        // Customer information
         customerEmail: data.customerEmail,
         customerFirstName: data.customerFirstName,
         customerLastName: data.customerLastName,
         customerPhone: data.customerPhone,
+        // Guest email (NULL for authenticated orders)
+        guestEmail: isGuestOrder ? data.guestEmail || data.customerEmail : null,
+        // Shipping address
         shippingStreet: data.shippingStreet,
         shippingCity: data.shippingCity,
         shippingPostcode: data.shippingPostcode,
         shippingCountry: data.shippingCountry || 'GB',
+        // Billing address
         billingStreet: data.billingStreet,
         billingCity: data.billingCity,
         billingPostcode: data.billingPostcode,
         billingCountry: data.billingCountry,
+        // Order details
         status: OrderStatus.PENDING,
         source: data.source,
         subtotal: data.subtotal,
@@ -125,16 +145,19 @@ class OrderService {
         tax: data.tax,
         total: data.total,
         currency: data.currency || 'GBP',
+        // Payment information
         stripeSessionId: data.stripeSessionId,
         stripePaymentIntentId: data.stripePaymentIntentId,
         paidAt: data.paidAt,
+        // Order items
         items: {
           create: data.items,
         },
+        // Status history
         statusHistory: {
           create: {
             status: OrderStatus.PENDING,
-            notes: 'Order created',
+            notes: `Order created (${orderType})`,
           },
         },
       },
@@ -469,6 +492,32 @@ class OrderService {
         createdAt: 'desc',
       },
       take: 20,
+    });
+  }
+
+  /**
+   * Track guest order by email and order number
+   */
+  async trackGuestOrder(email: string, orderNumber: string): Promise<Order & { items: OrderItem[] } | null> {
+    return prisma.order.findFirst({
+      where: {
+        orderNumber: {
+          equals: orderNumber,
+          mode: 'insensitive',
+        },
+        OR: [
+          { guestEmail: email },
+          { customerEmail: email },
+        ],
+      },
+      include: {
+        items: true,
+        statusHistory: {
+          orderBy: {
+            createdAt: 'desc',
+          },
+        },
+      },
     });
   }
 }

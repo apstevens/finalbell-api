@@ -8,7 +8,7 @@ import { OrderSource } from '@prisma/client';
 
 export const createCheckout = async (req: Request, res: Response) => {
     try {
-        const { items } = req.body;
+        const { items, guestEmail } = req.body;
 
         if (!items || !Array.isArray(items) || items.length === 0) {
             return res.status(400).json({
@@ -25,13 +25,35 @@ export const createCheckout = async (req: Request, res: Response) => {
             }
         }
 
-        const successUrl = `${env.CLIENT_URL}/success?session_id={CHECKOUT_SESSION_ID}`;
-        const cancelUrl = `${env.CLIENT_URL}/cancel`;
+        // Determine if user is authenticated (set by auth middleware)
+        const isAuthenticated = !!(req as any).user;
+        const userId = isAuthenticated ? (req as any).user.id : null;
+        const userEmail = isAuthenticated ? (req as any).user.email : null;
+
+        // For guest checkout, ensure guestEmail is provided
+        if (!isAuthenticated && !guestEmail) {
+            return res.status(400).json({
+                error: 'Guest email is required for guest checkout',
+            });
+        }
+
+        // Validate guest email format if provided
+        if (guestEmail && typeof guestEmail !== 'string') {
+            return res.status(400).json({
+                error: 'Invalid guest email format',
+            });
+        }
+
+        const successUrl = `${env.CLIENT_URL}/order/success?session_id={CHECKOUT_SESSION_ID}`;
+        const cancelUrl = `${env.CLIENT_URL}/cart`;
 
         const session = await createCheckoutSession({
             items,
             successUrl,
             cancelUrl,
+            customerEmail: isAuthenticated ? userEmail : guestEmail,
+            userId,
+            isGuest: !isAuthenticated,
         });
 
         res.json({ sessionId: session.id, url: session.url });
@@ -87,6 +109,12 @@ export const handleStripeWebhook = async (req: Request, res: Response) => {
                         break;
                     }
 
+                    // Extract metadata to determine order type
+                    const metadata = fullSession.metadata || {};
+                    const isGuestOrder = metadata.orderType === 'guest';
+                    const userId = metadata.userId && metadata.userId !== 'guest' ? metadata.userId : null;
+                    const customerEmail = customerDetails.email || metadata.customerEmail || '';
+
                     // Calculate totals
                     const subtotal = (fullSession.amount_subtotal || 0) / 100;
                     const shippingCost = (fullSession.total_details?.amount_shipping || 0) / 100;
@@ -108,10 +136,13 @@ export const handleStripeWebhook = async (req: Request, res: Response) => {
 
                     // Create order in database
                     const order = await orderService.createOrder({
-                        customerEmail: customerDetails.email || '',
+                        userId,
+                        orderType: isGuestOrder ? 'guest' : 'authenticated',
+                        customerEmail,
                         customerFirstName: customerDetails.name?.split(' ')[0] || '',
                         customerLastName: customerDetails.name?.split(' ').slice(1).join(' ') || '',
                         customerPhone: customerDetails.phone || undefined,
+                        guestEmail: isGuestOrder ? customerEmail : null,
                         shippingStreet: `${shippingDetails.address?.line1 || ''} ${shippingDetails.address?.line2 || ''}`.trim(),
                         shippingCity: shippingDetails.address?.city || '',
                         shippingPostcode: shippingDetails.address?.postal_code || '',

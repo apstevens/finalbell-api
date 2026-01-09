@@ -22,10 +22,12 @@ export interface CreateCheckoutSessionParams {
     successUrl: string;
     cancelUrl: string;
     customerEmail?: string;
+    userId?: string | null;
+    isGuest?: boolean;
 }
 
 export async function createCheckoutSession(params: CreateCheckoutSessionParams): Promise<Stripe.Checkout.Session> {
-    const { items, successUrl, cancelUrl, customerEmail } = params;
+    const { items, successUrl, cancelUrl, customerEmail, userId, isGuest = true } = params;
 
     // Create line items for Stripe
     const lineItems: Stripe.Checkout.SessionCreateParams.LineItem[] = items.map(item => ({
@@ -47,7 +49,10 @@ export async function createCheckoutSession(params: CreateCheckoutSessionParams)
         mode: 'payment',
         success_url: successUrl,
         cancel_url: cancelUrl,
-        customer_email: customerEmail,
+        // Set customer_email for guest orders (pre-fill email field in Stripe Checkout)
+        customer_email: isGuest ? customerEmail : undefined,
+        // For authenticated users, we could optionally create/use a Stripe Customer
+        // customer: isAuthenticated ? stripeCustomerId : undefined,
         shipping_address_collection: {
             allowed_countries: ['GB'], // UK only
         },
@@ -64,6 +69,9 @@ export async function createCheckoutSession(params: CreateCheckoutSessionParams)
         billing_address_collection: 'required',
         metadata: {
             source: 'final-bell-marketing',
+            userId: userId || 'guest',
+            orderType: isGuest ? 'guest' : 'authenticated',
+            customerEmail: customerEmail || '',
         },
     });
 
