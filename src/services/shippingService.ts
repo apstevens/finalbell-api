@@ -18,7 +18,7 @@
  * - Mainland UK: Next day delivery (2-3 days for northern Scotland and UK-offshore)
  */
 
-import { CheckoutItem } from './stripeService';
+import type { CheckoutItem } from '../types/stripe';
 import { productService } from './productService';
 
 export interface ShippingRate {

@@ -1,5 +1,7 @@
 import Stripe from 'stripe';
 import { env } from '../config/env';
+import { getShippingRates, formatShippingRatesForStripe } from './shippingService';
+import type { CheckoutItem } from '../types/stripe';
 
 if (!env.STRIPE_SECRET_KEY) {
     throw new Error('STRIPE_SECRET_KEY is not defined in environment variables');
@@ -9,13 +11,8 @@ export const stripe = new Stripe(env.STRIPE_SECRET_KEY, {
     apiVersion: '2025-10-29.clover',
 });
 
-export interface CheckoutItem {
-    id: number;
-    name: string;
-    price: number;
-    quantity: number;
-    image: string;
-}
+// Re-export for backwards compatibility
+export type { CheckoutItem };
 
 export interface CreateCheckoutSessionParams {
     items: CheckoutItem[];
@@ -42,6 +39,11 @@ export async function createCheckoutSession(params: CreateCheckoutSessionParams)
         quantity: item.quantity,
     }));
 
+    // Calculate shipping rates based on cart weight
+    // Default to Mainland UK - rates will be adjusted based on actual address during checkout
+    const shippingRates = await getShippingRates(items, 'MAINLAND_UK');
+    const shippingOptions = formatShippingRatesForStripe(shippingRates);
+
     // Create Stripe checkout session
     const session = await stripe.checkout.sessions.create({
         payment_method_types: ['card'],
@@ -57,15 +59,7 @@ export async function createCheckoutSession(params: CreateCheckoutSessionParams)
             allowed_countries: ['GB'], // UK only
         },
 
-        shipping_options: [
-            {
-                shipping_rate_data: {
-                    type: 'fixed_amount',
-                    fixed_amount: { amount: 0, currency: 'gbp' },
-                    display_name: 'Standard Shipping (3-5 business days)',
-                },
-            },
-        ],
+        shipping_options: shippingOptions,
         billing_address_collection: 'required',
         metadata: {
             source: 'final-bell-marketing',
