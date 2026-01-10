@@ -228,3 +228,62 @@ export const getSessionDetails = async (req: Request, res: Response) => {
         });
     }
 };
+
+export const getOrderBySession = async (req: Request, res: Response) => {
+    try {
+        const { sessionId } = req.params;
+
+        if (!sessionId) {
+            return res.status(400).json({ error: 'Session ID is required' });
+        }
+
+        // Get order from database using session ID
+        const order = await orderService.getOrderByStripeSession(sessionId);
+
+        if (!order) {
+            return res.status(404).json({
+                error: 'Order not found',
+                message: 'No order found for this session. The order may still be processing.',
+            });
+        }
+
+        // Return order details
+        res.json({
+            success: true,
+            order: {
+                id: order.id,
+                orderNumber: order.orderNumber,
+                status: order.status,
+                orderType: order.orderType,
+                customerEmail: order.customerEmail,
+                customerFirstName: order.customerFirstName,
+                customerLastName: order.customerLastName,
+                shippingStreet: order.shippingStreet,
+                shippingCity: order.shippingCity,
+                shippingPostcode: order.shippingPostcode,
+                shippingCountry: order.shippingCountry,
+                subtotal: order.subtotal,
+                shippingCost: order.shippingCost,
+                tax: order.tax,
+                total: order.total,
+                currency: order.currency,
+                createdAt: order.createdAt,
+                items: (order as any).items.map((item: any) => ({
+                    productName: item.productName,
+                    variantName: item.variantName,
+                    sku: item.sku,
+                    quantity: item.quantity,
+                    unitPrice: item.unitPrice,
+                    totalPrice: item.totalPrice,
+                    imageUrl: item.imageUrl,
+                })),
+            },
+        });
+    } catch (error) {
+        console.error('Error retrieving order by session:', error);
+        res.status(500).json({
+            error: 'Failed to retrieve order',
+            message: error instanceof Error ? error.message : 'Unknown error',
+        });
+    }
+};

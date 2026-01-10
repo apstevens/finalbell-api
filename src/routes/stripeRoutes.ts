@@ -1,5 +1,5 @@
 import express from 'express';
-import { createCheckout, handleStripeWebhook, getSessionDetails } from '../controllers/stripeController';
+import { createCheckout, handleStripeWebhook, getSessionDetails, getOrderBySession } from '../controllers/stripeController';
 import { checkoutLimiter } from '../middleware/rateLimiter';
 
 const router = express.Router();
@@ -12,5 +12,8 @@ router.post('/webhook', handleStripeWebhook);
 
 // Get session details
 router.get('/session/:sessionId', getSessionDetails);
+
+// Get order by session ID (PUBLIC - for order success page)
+router.get('/order/:sessionId', getOrderBySession);
 
 export default router;
